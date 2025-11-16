@@ -1,0 +1,15 @@
+//
+//  AuthenticationView.swift
+//  Recall
+//
+//  Created by Aditya Chauhan on 14/11/25.
+//
+
+import SwiftUI
+
+
+struct AuthenticationView: View{
+    var body: some View{
+        Text("Hello")
+    }
+}
