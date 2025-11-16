@@ -16,6 +16,8 @@ public protocol RoutableObject: AnyObject {
     func navigateBack(to desctination: Destination)
     
     func navigateToRoot()
+    
+    func pushReplacement()
 }
 
 

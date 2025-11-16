@@ -29,7 +29,7 @@ struct OnBoarding: View {
                     Text("our personal memory vault. Store anything you need to remember, anytime, anywhere").font(.bodyText).foregroundColor(.white)
                 }
                 Button(action: {
-                    router.push(.authentication)
+                    router.push(.login)
                 }) {
                     ZStack{
                         Rectangle().frame(width: .infinity, height: 60, alignment: .center).foregroundColor(AppColor.primary).cornerRadius(30)

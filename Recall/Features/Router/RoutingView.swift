@@ -15,9 +15,11 @@ struct RoutingView<Root: View>: View {
                 .navigationDestination(for: AppRoute.self) { route in
                     switch route {
                     case .onboarding:
-                        OnBoarding()
-                    case .authentication:
-                        AuthenticationView()
+                        OnBoarding() .navigationBarBackButtonHidden(true)
+                    case .login:
+                        LoginView() .navigationBarBackButtonHidden(true)
+                    case .signup:
+                        SignupView() .navigationBarBackButtonHidden(true)
                     }
                 }
         }

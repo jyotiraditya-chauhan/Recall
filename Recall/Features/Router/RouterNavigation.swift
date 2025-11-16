@@ -17,4 +17,12 @@ final class Router: ObservableObject {
     func popToRoot() {
         stack.removeAll()
     }
+    
+    
+       func replace(with route: AppRoute) {
+           if !stack.isEmpty {
+               stack.removeLast()
+           }
+           stack.append(route)
+       }
 }
