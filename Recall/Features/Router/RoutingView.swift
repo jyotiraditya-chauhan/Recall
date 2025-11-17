@@ -20,6 +20,9 @@ struct RoutingView<Root: View>: View {
                         LoginView() .navigationBarBackButtonHidden(true)
                     case .signup:
                         SignupView() .navigationBarBackButtonHidden(true)
+                        
+                    case .home:
+                        HomeView().navigationBarBackButtonHidden(true)
                     }
                 }
         }
