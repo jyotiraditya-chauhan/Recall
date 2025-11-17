@@ -1,7 +1,7 @@
 import Foundation
 import FirebaseFirestore
 
-struct UserModel: Codable, Identifiable {
+struct UserEntity: Codable, Identifiable {
 
     
     @DocumentID var id: String?
@@ -79,7 +79,7 @@ enum AuthProvider: String, Codable {
 
 
 
-extension UserModel {
+extension UserEntity {
     func toDictionary() -> [String: Any] {
         return [
             "email": email,
@@ -94,7 +94,7 @@ extension UserModel {
         ]
     }
     
-    static func fromDictionary(_ data: [String: Any], id: String) -> UserModel? {
+    static func fromDictionary(_ data: [String: Any], id: String) -> UserEntity? {
         guard let email = data["email"] as? String else { return nil }
         
         let fullName = data["full_name"] as? String ?? ""
@@ -109,7 +109,7 @@ extension UserModel {
         let notificationsEnabled = data["notifications_enabled"] as? Bool ?? true
         let isPremium = data["is_premium"] as? Bool ?? false
         
-        return UserModel(
+        return UserEntity(
             id: id,
             email: email,
             fullName: fullName,
@@ -125,9 +125,9 @@ extension UserModel {
 }
 
 
-//extension UserModel {
-//    static var mockUser: UserModel {
-//        UserModel(
+//extension UserEntity {
+//    static var mockUser: UserEntity {
+//        UserEntity(
 //            id: "mock_user_123",
 //            email: "aditya@example.com",
 //            fullName: "Aditya Chauhan",
@@ -141,8 +141,8 @@ extension UserModel {
 //        )
 //    }
 //    
-//    static var mockGoogleUser: UserModel {
-//        UserModel(
+//    static var mockGoogleUser: UserEntity {
+//        UserEntity(
 //            id: "mock_google_456",
 //            email: "aditya@gmail.com",
 //            fullName: "Aditya Chauhan",

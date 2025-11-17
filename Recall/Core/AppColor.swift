@@ -7,7 +7,6 @@
 
 
 import SwiftUI
-import SwiftUICore
 
 struct AppColor{
     static let primary = Color(hex: "#7000BF")

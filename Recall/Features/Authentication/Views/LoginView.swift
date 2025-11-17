@@ -1,90 +1,142 @@
 import SwiftUI
 
-
-struct LoginView: View{
+struct LoginView: View {
     @EnvironmentObject var router: Router
-    @State private var conteroller: String = "";
+//    @ObservedObject var authService = AuthenticationViewModel()
+    @State private var email: String = ""
+    @State private var password: String = ""
+    @State private var errorMessage: String = ""
     
-    func handletap() {
-        print("Hello")
+    func handleLogin() {
+        errorMessage = ""
+        
+        if email.isEmpty || password.isEmpty {
+            errorMessage = "All fields are required."
+            return
+        }
+        
+        if !email.contains("@") {
+            errorMessage = "Please enter a valid email."
+            return
+        }
+        
+        if password.count < 6 {
+            errorMessage = "Password must be at least 6 characters."
+            return
+        }
+        
+        print("Login Successful!")
     }
-    var body: some View{
-        ZStack{
+    
+    var body: some View {
+        ZStack {
             Color.black.ignoresSafeArea()
             
-            VStack {
-                
-                VStack(alignment: .center){
+            ScrollView {
+                VStack {
                     
-                    Text("Sign In").font(.headline).fontWeight(.bold).foregroundColor(.white).padding(.bottom, 4)
-                    Text("Home back, you've been used").font(.bodyLarge).fontWeight(.medium).foregroundColor(.gray)
-                    
-                }.padding(.bottom, 48).padding(.top, 48)
-                
-                
-                VStack() {
-                    
-                    CustomTextField(label: "Email", placeholder: "Enter Your Email", text: $conteroller).padding(.bottom, 8)
-                    
-                    CustomTextField(label: "Password", placeholder: "Enter Your password", text: $conteroller)
-                    
-                }.padding(.bottom, 12)
-                
-                HStack {
-                    Spacer()
-                    Button(action: handletap){
-                        Text("Forget Password")
-                            .font(.bodyText)
-                            .foregroundColor(.white)
+                    VStack(alignment: .center) {
+                        Text("Sign In")
+                            .font(.headline)
                             .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding(.bottom, 4)
+                        
+                        Text("Welcome back, you've been missed")
+                            .font(.bodyLarge)
+                            .foregroundColor(.gray)
                     }
-                }
-                .padding(.bottom, 48)
-
-                
-                Button(action: handletap) {
-                    Text("Submit")
-                        .font(.buttonText)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(AppColor.primary)
-                        .cornerRadius(30)
-                }
-                
-              
-                HStack {
-                    Rectangle().frame(height: 0.5).foregroundColor(.gray)
-                    Text("OR")
-                        .foregroundColor(.gray)
-                        .font(.caption)
-                    Rectangle().frame(height: 0.5).foregroundColor(.gray)
-                }
-                .padding(.vertical, 10)
-
-                VStack{
-                    CustomOutlineButton(icon: "google_logo", title: "Continue With Google", action: handletap)
-                    CustomOutlineButton(icon: "apple_logo", title: "Continue With Apple", action: handletap)
+                    .padding(.bottom, 48)
+                    .padding(.top, 48)
                     
-                }.padding(.bottom, 52)
-                HStack{
-                    Text("Don't have an account?").font(.bodyText).foregroundColor(.gray)
-                    Text("Sign Up").font(.bodyLarge).fontWeight(.bold).foregroundColor(AppColor.primary).onTapGesture {
-                        router.push(.signup)
+                    
+                    VStack(spacing: 8) {
+                        CustomTextField(label: "Email",
+                                        placeholder: "Enter Your Email",
+                                        text: $email)
+                        
+                        CustomTextField(label: "Password",
+                                        placeholder: "Enter Your Password",
+                                        text: $password)
                     }
+                    .padding(.bottom, 12)
+                    
+                    
+                    HStack {
+                        Spacer()
+                        Button(action: handleLogin) {
+                            Text("Forget Password")
+                                .font(.bodyText)
+                                .foregroundColor(.white)
+                                .fontWeight(.bold)
+                        }
+                    }
+                    .padding(.bottom, 30)
+                    
+                    
+                    if !errorMessage.isEmpty {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                            .padding(.bottom, 8)
+                    }
+                    
+                    
+                    Button(action: handleLogin) {
+                        Text("Submit")
+                            .font(.buttonText)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(AppColor.primary)
+                            .cornerRadius(30)
+                    }
+                    
+                    
+                    HStack {
+                        Rectangle().frame(height: 0.5).foregroundColor(.gray)
+                        Text("OR")
+                            .foregroundColor(.gray)
+                            .font(.caption)
+                        Rectangle().frame(height: 0.5).foregroundColor(.gray)
+                    }
+                    .padding(.vertical, 10)
+                    
+                    
+                    VStack(spacing: 10) {
+                        CustomOutlineButton(icon: "google_logo",
+                                            title: "Continue With Google",
+                                            action: handleLogin)
+                        
+                        CustomOutlineButton(icon: "apple_logo",
+                                            title: "Continue With Apple",
+                                            action: handleLogin)
+                    }
+                    .padding(.bottom, 52)
+                    
+                    
+                    HStack {
+                        Text("Don't have an account?")
+                            .foregroundColor(.gray)
+                            .font(.bodyText)
+                        
+                        Text("Sign Up")
+                            .foregroundColor(AppColor.primary)
+                            .font(.bodyLarge)
+                            .fontWeight(.bold)
+                            .onTapGesture {
+                                router.push(.signup)
+                            }
+                    }
+                    .padding(.bottom, 16)
                 }
-                Spacer()
-                
-            }.scrollDismissesKeyboard(.automatic)
                 .padding()
+            }
+            .scrollDismissesKeyboard(.automatic)
         }
     }
 }
 
-
-
-
 #Preview {
     LoginView()
 }
-
