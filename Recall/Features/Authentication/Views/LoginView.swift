@@ -1,63 +1,19 @@
+//
+//  LoginView.swift
+//  Recall
+//
+//  Created by Aditya Chauhan on 16/11/25.
+//
+
 import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var router: Router
-    @EnvironmentObject var appState: AppState
+    @EnvironmentObject var authViewModel: AuthenticationViewModel
+    
     @State private var email: String = ""
     @State private var password: String = ""
-    @State private var errorMessage: String = ""
-    
-    @MainActor
-    func handleLogin() async {
-        errorMessage = ""
-        
-        if email.isEmpty || password.isEmpty {
-            errorMessage = "All fields are required."
-            return
-        }
-        
-        if !email.contains("@") {
-            errorMessage = "Please enter a valid email."
-            return
-        }
-        
-        if password.count < 6 {
-            errorMessage = "Password must be at least 6 characters."
-            return
-        }
-        
-        await appState.login(email: email, password: password)
-        
-        await MainActor.run {
-            if let vmErrorMessage = appState.authViewModel.errorMessage {
-                errorMessage = vmErrorMessage
-            }
-        }
-    }
-    
-    @MainActor
-    func handleGoogleSignIn() async {
-        errorMessage = ""
-        await appState.signInWithGoogle()
-        
-        await MainActor.run {
-            if let vmErrorMessage = appState.authViewModel.errorMessage {
-                errorMessage = vmErrorMessage
-            }
-        }
-    }
-    
-    @MainActor
-    func handleAppleSignIn() async {
-        errorMessage = ""
-        await appState.signInWithApple()
-        
-        await MainActor.run {
-            if let vmErrorMessage = appState.authViewModel.errorMessage {
-                errorMessage = vmErrorMessage
-            }
-        }
-    }
+    @State private var localError: String = ""
     
     var body: some View {
         ZStack {
@@ -97,22 +53,24 @@ struct LoginView: View {
                     HStack {
                         Spacer()
                         Button {
-                            Task {
-                                await handleLogin()
-                            }
+                            
                         } label: {
                             Text("Forget Password")
                                 .font(.bodyText)
                                 .foregroundColor(.white)
                                 .fontWeight(.bold)
                         }
-
                     }
                     .padding(.bottom, 30)
                     
                     
-                    if !errorMessage.isEmpty {
-                        Text(errorMessage)
+                    if !localError.isEmpty {
+                        Text(localError)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                            .padding(.bottom, 8)
+                    } else if let vmError = authViewModel.errorMessage {
+                        Text(vmError)
                             .foregroundColor(.red)
                             .font(.caption)
                             .padding(.bottom, 8)
@@ -124,14 +82,20 @@ struct LoginView: View {
                             await handleLogin()
                         }
                     } label: {
-                        Text("Submit")
-                            .font(.buttonText)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(AppColor.primary)
-                            .cornerRadius(30)
+                        if authViewModel.isLoading {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Submit")
+                                .font(.buttonText)
+                                .foregroundColor(.white)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(AppColor.primary)
+                    .cornerRadius(30)
+                    .disabled(authViewModel.isLoading)
                     
                     
                     HStack {
@@ -152,6 +116,7 @@ struct LoginView: View {
                                 await handleGoogleSignIn()
                             }
                         })
+                        .disabled(authViewModel.isLoading)
                         
                         CustomOutlineButton(icon: "apple_logo",
                                             title: "Continue With Apple",
@@ -160,6 +125,7 @@ struct LoginView: View {
                                 await handleAppleSignIn()
                             }
                         })
+                        .disabled(authViewModel.isLoading)
                     }
                     .padding(.bottom, 52)
                     
@@ -183,11 +149,52 @@ struct LoginView: View {
             }
             .scrollDismissesKeyboard(.automatic)
         }
+        .onAppear {
+            authViewModel.clearError()
+            localError = ""
+        }
+    }
+    
+    private func handleLogin() async {
+        localError = ""
+        
+        guard validateInput() else { return }
+        
+        await authViewModel.login(email: email, password: password)
+    }
+    
+    private func handleGoogleSignIn() async {
+        localError = ""
+        await authViewModel.signInWithGoogle()
+    }
+    
+    private func handleAppleSignIn() async {
+        localError = ""
+        await authViewModel.signInWithApple()
+    }
+    
+    private func validateInput() -> Bool {
+        if email.isEmpty || password.isEmpty {
+            localError = "All fields are required."
+            return false
+        }
+        
+        if !email.contains("@") {
+            localError = "Please enter a valid email."
+            return false
+        }
+        
+        if password.count < 6 {
+            localError = "Password must be at least 6 characters."
+            return false
+        }
+        
+        return true
     }
 }
 
 #Preview {
     LoginView()
         .environmentObject(Router())
-        .environmentObject(AppState())
+        .environmentObject(AuthenticationViewModel.shared)
 }

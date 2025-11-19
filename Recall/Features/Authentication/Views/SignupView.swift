@@ -1,79 +1,21 @@
-
+//
+//  SignupView.swift
+//  Recall
+//
+//  Created by Aditya Chauhan on 16/11/25.
+//
 
 import SwiftUI
 
 struct SignupView: View {
     @EnvironmentObject var router: Router
-    @EnvironmentObject var appState: AppState
+    @EnvironmentObject var authViewModel: AuthenticationViewModel
     
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
-    
     @State private var isSelected: Bool = false
-    @State private var errorMessage: String = ""
-    
-    func handleSignUp(email: String, password: String) async  {
-        errorMessage = ""
-        
-        if email.isEmpty || password.isEmpty || confirmPassword.isEmpty {
-            errorMessage = "All fields are required."
-            return
-        }
-        
-        if !email.contains("@") {
-            errorMessage = "Please enter a valid email."
-            return
-        }
-        
-        if password.count < 6 {
-            errorMessage = "Password must be at least 6 characters."
-            return
-        }
-        
-        if password != confirmPassword {
-            errorMessage = "Passwords do not match."
-            return
-        }
-        
-        if !isSelected {
-            errorMessage = "You must agree to Terms & Conditions."
-            return
-        }
-        
-        await appState.signup(email: email, password: password)
-        
-        await MainActor.run {
-            if let vmErrorMessage = appState.authViewModel.errorMessage {
-                errorMessage = vmErrorMessage
-            }
-        }
-        
-        print("Sign Up Successful!")
-    }
-    
-    
-    func handleGoogleSignIn() async {
-        print("Yes")
-        
-        await appState.signInWithGoogle()
-        
-        await MainActor.run(body: {
-            if let vmErrorMessage = appState.authViewModel.errorMessage {
-                errorMessage = vmErrorMessage
-            }
-        })
-    }
-    
-    func handleAppleSignIn() async {
-        await appState.signInWithApple()
-        
-        await MainActor.run(body: {
-            if let vmErrorMessage = appState.authViewModel.errorMessage {
-                errorMessage = vmErrorMessage
-            }
-        })
-    }
+    @State private var localError: String = ""
     
     var body: some View {
         
@@ -130,7 +72,7 @@ struct SignupView: View {
                         
                         Text("Terms & Conditions ")
                             .font(.bodyText)
-                                                    .fontWeight(.bold)
+                            .fontWeight(.bold)
                             .underline()
                             .foregroundColor(AppColor.primary)
                         
@@ -139,28 +81,39 @@ struct SignupView: View {
                     .padding(.bottom, 20)
                     
                     
-                    if !errorMessage.isEmpty {
-                        Text(errorMessage)
+                    if !localError.isEmpty {
+                        Text(localError)
                             .foregroundColor(.red)
                             .font(.caption)
                             .fontWeight(.regular)
+                            .padding(.bottom, 8)
+                    } else if let vmError = authViewModel.errorMessage {
+                        Text(vmError)
+                            .foregroundColor(.red)
+                            .font(.caption)
                             .padding(.bottom, 8)
                     }
                     
                     
                     Button {
                         Task {
-                            await handleSignUp(email: email, password: password)
+                            await handleSignUp()
                         }
                     } label: {
-                        Text("Sign Up")
-                            .font(.buttonText)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(AppColor.primary)
-                            .cornerRadius(30)
+                        if authViewModel.isLoading {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Sign Up")
+                                .font(.buttonText)
+                                .foregroundColor(.white)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(AppColor.primary)
+                    .cornerRadius(30)
+                    .disabled(authViewModel.isLoading)
                     
                     
                     
@@ -176,17 +129,18 @@ struct SignupView: View {
                     
                     VStack(spacing: 10) {
                         CustomOutlineButton(icon: "google_logo", title: "Continue With Google", action: {
-                            Task
-                            {
-                                 await handleGoogleSignIn()
+                            Task {
+                                await handleGoogleSignIn()
                             }
-                        }
-                        )
+                        })
+                        .disabled(authViewModel.isLoading)
+                        
                         CustomOutlineButton(icon: "apple_logo", title: "Continue With Apple", action: {
                             Task {
                                 await handleAppleSignIn()
                             }
                         })
+                        .disabled(authViewModel.isLoading)
                     }
                     .padding(.bottom, 52)
                     
@@ -209,11 +163,62 @@ struct SignupView: View {
             }
             .scrollDismissesKeyboard(.automatic)
         }
+        .onAppear {
+            authViewModel.clearError()
+            localError = ""
+        }
+    }
+    
+    private func handleSignUp() async {
+        localError = ""
+        
+        guard validateInput() else { return }
+        
+        await authViewModel.signup(email: email, password: password)
+    }
+    
+    private func handleGoogleSignIn() async {
+        localError = ""
+        await authViewModel.signInWithGoogle()
+    }
+    
+    private func handleAppleSignIn() async {
+        localError = ""
+        await authViewModel.signInWithApple()
+    }
+    
+    private func validateInput() -> Bool {
+        if email.isEmpty || password.isEmpty || confirmPassword.isEmpty {
+            localError = "All fields are required."
+            return false
+        }
+        
+        if !email.contains("@") {
+            localError = "Please enter a valid email."
+            return false
+        }
+        
+        if password.count < 6 {
+            localError = "Password must be at least 6 characters."
+            return false
+        }
+        
+        if password != confirmPassword {
+            localError = "Passwords do not match."
+            return false
+        }
+        
+        if !isSelected {
+            localError = "You must agree to Terms & Conditions."
+            return false
+        }
+        
+        return true
     }
 }
 
 #Preview {
     SignupView()
         .environmentObject(Router())
-        .environmentObject(AppState())
+        .environmentObject(AuthenticationViewModel.shared)
 }

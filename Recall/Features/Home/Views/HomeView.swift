@@ -10,7 +10,7 @@ import SwiftUI
 
 
 struct HomeView: View {
-    @EnvironmentObject var appState: AppState
+    @EnvironmentObject var authViewModel: AuthenticationViewModel
     @EnvironmentObject var router: Router
     
     var body: some View {
@@ -19,7 +19,7 @@ struct HomeView: View {
                 Color.black.ignoresSafeArea()
                 
                 VStack {
-                    if let user = appState.currentUser {
+                    if let user = authViewModel.currentUser {
                         VStack(spacing: 20) {
                             Text("Welcome!")
                                 .font(.largeTitle)
@@ -38,22 +38,28 @@ struct HomeView: View {
                             
                             Button {
                                 Task {
-                                    await logout()
+                                    await handleLogout()
                                 }
                             } label: {
-                                Text("Logout")
-                                    .font(.buttonText)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 50)
-                                    .background(AppColor.primary)
-                                    .cornerRadius(30)
+                                if authViewModel.isLoading {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text("Logout")
+                                        .font(.buttonText)
+                                        .foregroundColor(.white)
+                                }
                             }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(AppColor.primary)
+                            .cornerRadius(30)
+                            .disabled(authViewModel.isLoading)
                             .padding(.horizontal)
                         }
                     } else {
-                        Text("Loading...")
-                            .foregroundColor(.white)
+                        ProgressView()
+                            .tint(.white)
                     }
                 }
                 .padding()
@@ -62,14 +68,14 @@ struct HomeView: View {
         }
     }
     
-    private func logout() async {
-        await appState.logout()
+    private func handleLogout() async {
+        await authViewModel.logout()
     }
 }
 
 
 #Preview {
     HomeView()
-        .environmentObject(AppState())
+        .environmentObject(AuthenticationViewModel.shared)
         .environmentObject(Router())
 }
