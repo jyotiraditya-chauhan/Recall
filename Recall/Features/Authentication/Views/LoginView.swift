@@ -2,12 +2,13 @@ import SwiftUI
 
 struct LoginView: View {
     @EnvironmentObject var router: Router
-//    @ObservedObject var authService = AuthenticationViewModel()
+    @EnvironmentObject var appState: AppState
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var errorMessage: String = ""
     
-    func handleLogin() {
+    @MainActor
+    func handleLogin() async {
         errorMessage = ""
         
         if email.isEmpty || password.isEmpty {
@@ -25,7 +26,37 @@ struct LoginView: View {
             return
         }
         
-        print("Login Successful!")
+        await appState.login(email: email, password: password)
+        
+        await MainActor.run {
+            if let vmErrorMessage = appState.authViewModel.errorMessage {
+                errorMessage = vmErrorMessage
+            }
+        }
+    }
+    
+    @MainActor
+    func handleGoogleSignIn() async {
+        errorMessage = ""
+        await appState.signInWithGoogle()
+        
+        await MainActor.run {
+            if let vmErrorMessage = appState.authViewModel.errorMessage {
+                errorMessage = vmErrorMessage
+            }
+        }
+    }
+    
+    @MainActor
+    func handleAppleSignIn() async {
+        errorMessage = ""
+        await appState.signInWithApple()
+        
+        await MainActor.run {
+            if let vmErrorMessage = appState.authViewModel.errorMessage {
+                errorMessage = vmErrorMessage
+            }
+        }
     }
     
     var body: some View {
@@ -53,9 +84,10 @@ struct LoginView: View {
                     VStack(spacing: 8) {
                         CustomTextField(label: "Email",
                                         placeholder: "Enter Your Email",
-                                        text: $email)
+                                        text: $email,
+                                        keyboardType: .emailAddress)
                         
-                        CustomTextField(label: "Password",
+                        CustomSecureField(label: "Password",
                                         placeholder: "Enter Your Password",
                                         text: $password)
                     }
@@ -64,12 +96,17 @@ struct LoginView: View {
                     
                     HStack {
                         Spacer()
-                        Button(action: handleLogin) {
+                        Button {
+                            Task {
+                                await handleLogin()
+                            }
+                        } label: {
                             Text("Forget Password")
                                 .font(.bodyText)
                                 .foregroundColor(.white)
                                 .fontWeight(.bold)
                         }
+
                     }
                     .padding(.bottom, 30)
                     
@@ -82,7 +119,11 @@ struct LoginView: View {
                     }
                     
                     
-                    Button(action: handleLogin) {
+                    Button {
+                        Task {
+                            await handleLogin()
+                        }
+                    } label: {
                         Text("Submit")
                             .font(.buttonText)
                             .foregroundColor(.white)
@@ -106,11 +147,19 @@ struct LoginView: View {
                     VStack(spacing: 10) {
                         CustomOutlineButton(icon: "google_logo",
                                             title: "Continue With Google",
-                                            action: handleLogin)
+                                            action: {
+                            Task{
+                                await handleGoogleSignIn()
+                            }
+                        })
                         
                         CustomOutlineButton(icon: "apple_logo",
                                             title: "Continue With Apple",
-                                            action: handleLogin)
+                                            action: {
+                            Task{
+                                await handleAppleSignIn()
+                            }
+                        })
                     }
                     .padding(.bottom, 52)
                     
@@ -139,4 +188,6 @@ struct LoginView: View {
 
 #Preview {
     LoginView()
+        .environmentObject(Router())
+        .environmentObject(AppState())
 }

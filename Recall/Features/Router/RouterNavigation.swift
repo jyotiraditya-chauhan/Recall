@@ -11,6 +11,7 @@ final class Router: ObservableObject {
     }
     
     func pop() {
+        guard !stack.isEmpty else { return }
         stack.removeLast()
     }
     
@@ -23,6 +24,11 @@ final class Router: ObservableObject {
            if !stack.isEmpty {
                stack.removeLast()
            }
+           stack.append(route)
+       }
+       
+       func navigateTo(_ route: AppRoute) {
+           stack.removeAll()
            stack.append(route)
        }
 }

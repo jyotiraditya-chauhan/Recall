@@ -31,11 +31,19 @@ struct OnBoarding: View {
                 Button(action: {
                     router.push(.login)
                 }) {
-                    ZStack{
-                        Rectangle().frame(width: .infinity, height: 60, alignment: .center).foregroundColor(AppColor.primary).cornerRadius(30)
-                        Text("Submit").font(.body).foregroundColor(.white)
+                    ZStack {
+                        Rectangle()
+                            .foregroundColor(AppColor.primary)
+                            .frame(maxWidth: .infinity,maxHeight: 60)
+                            .cornerRadius(30)
+
+                        Text("Submit")
+                            .font(.body)
+                            .foregroundColor(.white)
                     }
-                }.padding()
+                }
+                .padding()
+
             }
         }
     }

@@ -37,6 +37,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
 @main
 struct RecallApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject var router = Router()
     @StateObject var appState = AppState()
 

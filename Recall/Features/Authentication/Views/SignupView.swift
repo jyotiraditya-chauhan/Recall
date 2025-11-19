@@ -4,7 +4,7 @@ import SwiftUI
 
 struct SignupView: View {
     @EnvironmentObject var router: Router
-    @StateObject private var viewModel = AuthenticationViewModel()
+    @EnvironmentObject var appState: AppState
     
     @State private var email: String = ""
     @State private var password: String = ""
@@ -13,11 +13,7 @@ struct SignupView: View {
     @State private var isSelected: Bool = false
     @State private var errorMessage: String = ""
     
-    func handleOnTap() {
-        print("On Top")
-    }
-    
-    func handleSignUp(email: String, password: String)async  {
+    func handleSignUp(email: String, password: String) async  {
         errorMessage = ""
         
         if email.isEmpty || password.isEmpty || confirmPassword.isEmpty {
@@ -45,17 +41,38 @@ struct SignupView: View {
             return
         }
         
-        Task{
-            await viewModel.signUp(email: email, password: password)
-            
-            if viewModel.isAuthenticated {
-                router.replace(with: .home)
+        await appState.signup(email: email, password: password)
+        
+        await MainActor.run {
+            if let vmErrorMessage = appState.authViewModel.errorMessage {
+                errorMessage = vmErrorMessage
             }
         }
         
-        
-        
         print("Sign Up Successful!")
+    }
+    
+    
+    func handleGoogleSignIn() async {
+        print("Yes")
+        
+        await appState.signInWithGoogle()
+        
+        await MainActor.run(body: {
+            if let vmErrorMessage = appState.authViewModel.errorMessage {
+                errorMessage = vmErrorMessage
+            }
+        })
+    }
+    
+    func handleAppleSignIn() async {
+        await appState.signInWithApple()
+        
+        await MainActor.run(body: {
+            if let vmErrorMessage = appState.authViewModel.errorMessage {
+                errorMessage = vmErrorMessage
+            }
+        })
     }
     
     var body: some View {
@@ -84,9 +101,9 @@ struct SignupView: View {
                     
                     
                     VStack(spacing: 8) {
-                        CustomTextField(label: "Email", placeholder: "Enter Your Email", text: $email)
-                        CustomTextField(label: "Password", placeholder: "Enter Your Password", text: $password)
-                        CustomTextField(label: "Confirm Password", placeholder: "Re-enter Password", text: $confirmPassword)
+                        CustomTextField(label: "Email", placeholder: "Enter Your Email", text: $email, keyboardType: .emailAddress)
+                        CustomSecureField(label: "Password", placeholder: "Enter Your Password", text: $password)
+                        CustomSecureField(label: "Confirm Password", placeholder: "Re-enter Password", text: $confirmPassword)
                     }
                     .padding(.bottom, 12)
                     
@@ -113,7 +130,7 @@ struct SignupView: View {
                         
                         Text("Terms & Conditions ")
                             .font(.bodyText)
-                             .fontWeight(.bold)
+                                                    .fontWeight(.bold)
                             .underline()
                             .foregroundColor(AppColor.primary)
                         
@@ -144,7 +161,7 @@ struct SignupView: View {
                             .background(AppColor.primary)
                             .cornerRadius(30)
                     }
-
+                    
                     
                     
                     HStack {
@@ -158,8 +175,18 @@ struct SignupView: View {
                     
                     
                     VStack(spacing: 10) {
-                        CustomOutlineButton(icon: "google_logo", title: "Continue With Google", action: handleOnTap)
-                        CustomOutlineButton(icon: "apple_logo", title: "Continue With Apple", action: handleOnTap)
+                        CustomOutlineButton(icon: "google_logo", title: "Continue With Google", action: {
+                            Task
+                            {
+                                 await handleGoogleSignIn()
+                            }
+                        }
+                        )
+                        CustomOutlineButton(icon: "apple_logo", title: "Continue With Apple", action: {
+                            Task {
+                                await handleAppleSignIn()
+                            }
+                        })
                     }
                     .padding(.bottom, 52)
                     
@@ -187,4 +214,6 @@ struct SignupView: View {
 
 #Preview {
     SignupView()
+        .environmentObject(Router())
+        .environmentObject(AppState())
 }
