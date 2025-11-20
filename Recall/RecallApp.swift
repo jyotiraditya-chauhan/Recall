@@ -19,15 +19,15 @@ struct RecallApp: App {
     @StateObject private var router = Router()
     @StateObject private var authViewModel = AuthenticationViewModel.shared
 
-    init() {
-        RecallAppShortcuts.updateAppShortcutParameters()
-    }
-
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(router)
                 .environmentObject(authViewModel)
         }
+    }
+    
+    init() {
+        RecallAppShortcuts.updateAppShortcutParameters()
     }
 }

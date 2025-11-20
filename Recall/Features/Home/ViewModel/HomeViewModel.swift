@@ -79,13 +79,16 @@ class HomeViewModel: HomeViewModelProtocol, ObservableObject {
     }
 
     func createMemory(_ memory: MemoryEntity) async {
+        print("🔵 HomeViewModel: Creating memory with title: \(memory.title)")
         isLoading = true
         errorMessage = nil
 
         do {
-            let newMemory = try await memoryService.createMemory(memory)
-            memories.insert(newMemory, at: 0)
+            let createdMemory = try await memoryService.createMemory(memory)
+            print("✅ HomeViewModel: Memory created successfully with ID: \(createdMemory.id ?? "nil")")
+            // Don't manually update memories array - real-time listener will handle it
         } catch {
+            print("❌ HomeViewModel: Error creating memory: \(error)")
             errorMessage = error.localizedDescription
         }
 
@@ -98,9 +101,7 @@ class HomeViewModel: HomeViewModelProtocol, ObservableObject {
 
         do {
             try await memoryService.updateMemory(memory)
-            if let index = memories.firstIndex(where: { $0.id == memory.id }) {
-                memories[index] = memory
-            }
+            // Don't manually update memories array - real-time listener will handle it
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -109,6 +110,7 @@ class HomeViewModel: HomeViewModelProtocol, ObservableObject {
     }
 
     func deleteMemory(_ memoryId: String) async {
+        print("🔴 HomeViewModel: Deleting memory with ID: \(memoryId)")
         guard let userId = Auth.auth().currentUser?.uid else {
             errorMessage = "User not authenticated"
             return
@@ -119,8 +121,10 @@ class HomeViewModel: HomeViewModelProtocol, ObservableObject {
 
         do {
             try await memoryService.deleteMemory(memoryId, userId: userId)
-            memories.removeAll { $0.id == memoryId }
+            print("✅ HomeViewModel: Memory deleted successfully")
+            // Don't manually update memories array - real-time listener will handle it
         } catch {
+            print("❌ HomeViewModel: Error deleting memory: \(error)")
             errorMessage = error.localizedDescription
         }
 
@@ -128,13 +132,13 @@ class HomeViewModel: HomeViewModelProtocol, ObservableObject {
     }
 
     func toggleMemoryCompletion(_ memoryId: String) async {
+        print("🟡 HomeViewModel: Toggling completion for memory ID: \(memoryId)")
         do {
             try await memoryService.toggleMemoryCompletion(memoryId)
-            if let index = memories.firstIndex(where: { $0.id == memoryId }) {
-                memories[index].isCompleted.toggle()
-                memories[index].updatedAt = Date()
-            }
+            print("✅ HomeViewModel: Memory completion toggled successfully")
+            // Don't manually update memories array - real-time listener will handle it
         } catch {
+            print("❌ HomeViewModel: Error toggling memory completion: \(error)")
             errorMessage = error.localizedDescription
         }
     }
@@ -142,7 +146,21 @@ class HomeViewModel: HomeViewModelProtocol, ObservableObject {
     func startListeningToMemories() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
 
+        // Check if migration is needed and perform it
+        Task {
+            do {
+                try await memoryService.migrateOldDataToNewStructure(userId: userId)
+                print("✅ Migration check completed for user: \(userId)")
+            } catch {
+                print("⚠️ Migration failed, continuing with current data: \(error)")
+            }
+        }
+
         memoryListener = memoryService.listenToMemories(forUserId: userId) { [weak self] memories in
+            print("📡 HomeViewModel: Received \(memories.count) memories from real-time listener")
+            for memory in memories {
+                print("  - Memory: \(memory.title) (ID: \(memory.id ?? "nil"))")
+            }
             self?.memories = memories
         }
     }

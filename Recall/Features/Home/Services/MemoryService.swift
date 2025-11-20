@@ -29,107 +29,153 @@ class MemoryService {
     private let db = Firestore.firestore()
     private let memoriesCollection = "memories"
 
+    // MARK: - New Structure Methods
+    
+    private func getUserMemoryDocument(userId: String) async throws -> UserMemoryDocument {
+        let doc = try await db.collection(memoriesCollection).document(userId).getDocument()
+        
+        if let data = doc.data(), let userDoc = UserMemoryDocument.fromDictionary(data) {
+            return userDoc
+        } else {
+            // Create new document if it doesn't exist
+            let newDoc = UserMemoryDocument(uid: userId)
+            try await db.collection(memoriesCollection).document(userId).setData(newDoc.toDictionary())
+            return newDoc
+        }
+    }
+    
+    private func saveUserMemoryDocument(_ document: UserMemoryDocument) async throws {
+        var updatedDoc = document
+        updatedDoc.lastUpdated = Date()
+        try await db.collection(memoriesCollection).document(document.uid).setData(updatedDoc.toDictionary())
+    }
+
     func createMemory(_ memory: MemoryEntity) async throws -> MemoryEntity {
         guard let userId = Auth.auth().currentUser?.uid else {
             throw MemoryError.userNotAuthenticated
         }
 
+        var userDoc = try await getUserMemoryDocument(userId: userId)
+        
+        // Create new memory with generated ID
         var newMemory = memory
+        newMemory.id = UUID().uuidString
         newMemory.userId = userId
         newMemory.createdAt = Date()
         newMemory.updatedAt = Date()
-
-        let docRef = try await db.collection(memoriesCollection).addDocument(data: newMemory.toDictionary())
-        newMemory.id = docRef.documentID
-
+        
+        // Add to memories array
+        userDoc.memories.append(newMemory)
+        
+        // Save updated document
+        try await saveUserMemoryDocument(userDoc)
+        
+        // Update user memory count
         try await updateUserMemoryCount(userId: userId, increment: 1)
 
         return newMemory
     }
 
     func fetchMemories(forUserId userId: String) async throws -> [MemoryEntity] {
-        let snapshot = try await db.collection(memoriesCollection)
-            .whereField("user_id", isEqualTo: userId)
-            .order(by: "created_at", descending: true)
-            .getDocuments()
-
-        return snapshot.documents.compactMap { doc in
-            MemoryEntity.fromDictionary(doc.data(), id: doc.documentID)
-        }
+        let userDoc = try await getUserMemoryDocument(userId: userId)
+        return userDoc.memories.sorted { $0.createdAt > $1.createdAt }
     }
 
     func fetchMemory(byId memoryId: String) async throws -> MemoryEntity {
-        let doc = try await db.collection(memoriesCollection).document(memoryId).getDocument()
-
-        guard let data = doc.data(),
-              let memory = MemoryEntity.fromDictionary(data, id: doc.documentID) else {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw MemoryError.userNotAuthenticated
+        }
+        
+        let userDoc = try await getUserMemoryDocument(userId: userId)
+        
+        guard let memory = userDoc.memories.first(where: { $0.id == memoryId }) else {
             throw MemoryError.memoryNotFound
         }
-
+        
         return memory
     }
 
     func updateMemory(_ memory: MemoryEntity) async throws {
-        guard let memoryId = memory.id else {
-            throw MemoryError.invalidData
+        guard let userId = Auth.auth().currentUser?.uid,
+              let memoryId = memory.id else {
+            throw MemoryError.userNotAuthenticated
         }
 
+        var userDoc = try await getUserMemoryDocument(userId: userId)
+        
+        guard let index = userDoc.memories.firstIndex(where: { $0.id == memoryId }) else {
+            throw MemoryError.memoryNotFound
+        }
+        
+        // Update memory
         var updatedMemory = memory
         updatedMemory.updatedAt = Date()
-
-        try await db.collection(memoriesCollection)
-            .document(memoryId)
-            .updateData(updatedMemory.toDictionary())
+        userDoc.memories[index] = updatedMemory
+        
+        // Save updated document
+        try await saveUserMemoryDocument(userDoc)
     }
 
     func deleteMemory(_ memoryId: String, userId: String) async throws {
-        try await db.collection(memoriesCollection).document(memoryId).delete()
+        var userDoc = try await getUserMemoryDocument(userId: userId)
+        
+        guard let index = userDoc.memories.firstIndex(where: { $0.id == memoryId }) else {
+            throw MemoryError.memoryNotFound
+        }
+        
+        // Remove memory from array
+        userDoc.memories.remove(at: index)
+        
+        // Save updated document
+        try await saveUserMemoryDocument(userDoc)
+        
+        // Update user memory count
         try await updateUserMemoryCount(userId: userId, increment: -1)
     }
 
     func toggleMemoryCompletion(_ memoryId: String) async throws {
-        let memory = try await fetchMemory(byId: memoryId)
-        var updatedMemory = memory
-        updatedMemory.isCompleted.toggle()
-        updatedMemory.updatedAt = Date()
-
-        try await db.collection(memoriesCollection)
-            .document(memoryId)
-            .updateData([
-                "is_completed": updatedMemory.isCompleted,
-                "updated_at": Timestamp(date: updatedMemory.updatedAt)
-            ])
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw MemoryError.userNotAuthenticated
+        }
+        
+        var userDoc = try await getUserMemoryDocument(userId: userId)
+        
+        guard let index = userDoc.memories.firstIndex(where: { $0.id == memoryId }) else {
+            throw MemoryError.memoryNotFound
+        }
+        
+        // Toggle completion
+        userDoc.memories[index].isCompleted.toggle()
+        userDoc.memories[index].updatedAt = Date()
+        
+        // Save updated document
+        try await saveUserMemoryDocument(userDoc)
     }
 
     func searchMemories(forUserId userId: String, query: String) async throws -> [MemoryEntity] {
-        let allMemories = try await fetchMemories(forUserId: userId)
-        return allMemories.filter { memory in
+        let userDoc = try await getUserMemoryDocument(userId: userId)
+        return userDoc.memories.filter { memory in
             memory.title.localizedCaseInsensitiveContains(query) ||
             (memory.description?.localizedCaseInsensitiveContains(query) ?? false) ||
             memory.tags.contains { $0.localizedCaseInsensitiveContains(query) } ||
             (memory.relatedPerson?.localizedCaseInsensitiveContains(query) ?? false) ||
             (memory.relatedTo?.localizedCaseInsensitiveContains(query) ?? false)
-        }
+        }.sorted { $0.createdAt > $1.createdAt }
     }
 
     func filterMemories(forUserId userId: String, by priority: MemoryPriority? = nil, completed: Bool? = nil) async throws -> [MemoryEntity] {
-        var query: Query = db.collection(memoriesCollection)
-            .whereField("user_id", isEqualTo: userId)
-
+        let userDoc = try await getUserMemoryDocument(userId: userId)
+        var filtered = userDoc.memories
+        
         if let priority = priority {
-            query = query.whereField("priority", isEqualTo: priority.rawValue)
+            filtered = filtered.filter { $0.priority == priority }
         }
-
+        
         if let completed = completed {
-            query = query.whereField("is_completed", isEqualTo: completed)
+            filtered = filtered.filter { $0.isCompleted == completed }
         }
-
-        query = query.order(by: "created_at", descending: true)
-
-        let snapshot = try await query.getDocuments()
-        return snapshot.documents.compactMap { doc in
-            MemoryEntity.fromDictionary(doc.data(), id: doc.documentID)
-        }
+        
+        return filtered.sorted { $0.createdAt > $1.createdAt }
     }
 
     private func updateUserMemoryCount(userId: String, increment: Int) async throws {
@@ -140,24 +186,84 @@ class MemoryService {
     }
 
     func listenToMemories(forUserId userId: String, completion: @MainActor @escaping ([MemoryEntity]) -> Void) -> ListenerRegistration {
-        return db.collection(memoriesCollection)
-            .whereField("user_id", isEqualTo: userId)
-            .order(by: "created_at", descending: true)
+        return db.collection(memoriesCollection).document(userId)
             .addSnapshotListener { snapshot, error in
-                guard let documents = snapshot?.documents else {
-                    print("Error fetching memories: \(error?.localizedDescription ?? "Unknown error")")
+                guard let data = snapshot?.data() else {
+                    print("Error fetching user memories: \(error?.localizedDescription ?? "Unknown error")")
                     Task { @MainActor in
                         completion([])
                     }
                     return
                 }
 
-                let memories = documents.compactMap { doc in
-                    MemoryEntity.fromDictionary(doc.data(), id: doc.documentID)
-                }
-                Task { @MainActor in
-                    completion(memories)
+                if let userDoc = UserMemoryDocument.fromDictionary(data) {
+                    let sortedMemories = userDoc.memories.sorted { $0.createdAt > $1.createdAt }
+                    Task { @MainActor in
+                        completion(sortedMemories)
+                    }
+                } else {
+                    Task { @MainActor in
+                        completion([])
+                    }
                 }
             }
+    }
+
+    // MARK: - Migration Methods
+    
+    func migrateOldDataToNewStructure(userId: String) async throws {
+        print("🔄 Starting migration for user: \(userId)")
+        
+        // Fetch old memories using old structure
+        let oldMemories = try await fetchOldMemories(forUserId: userId)
+        
+        if oldMemories.isEmpty {
+            print("✅ No old memories to migrate for user: \(userId)")
+            return
+        }
+        
+        print("📦 Found \(oldMemories.count) memories to migrate")
+        
+        // Create new user document with old memories
+        var userDoc = UserMemoryDocument(uid: userId)
+        userDoc.memories = oldMemories.map { memory in
+            var newMemory = memory
+            newMemory.id = newMemory.id ?? UUID().uuidString // Ensure ID exists
+            return newMemory
+        }
+        
+        // Save new structure
+        try await saveUserMemoryDocument(userDoc)
+        
+        // Delete old memory documents
+        try await deleteOldMemoryDocuments(oldMemories)
+        
+        print("✅ Migration completed for user: \(userId)")
+    }
+    
+    private func fetchOldMemories(forUserId userId: String) async throws -> [MemoryEntity] {
+        let snapshot = try await db.collection(memoriesCollection)
+            .whereField("user_id", isEqualTo: userId)
+            .getDocuments()
+
+        let memories = snapshot.documents.compactMap { doc in
+            MemoryEntity.fromDictionary(doc.data(), id: doc.documentID)
+        }
+        
+        // Sort in memory instead of using Firestore order to avoid index requirement
+        return memories.sorted { $0.createdAt > $1.createdAt }
+    }
+    
+    private func deleteOldMemoryDocuments(_ memories: [MemoryEntity]) async throws {
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for memory in memories {
+                if let memoryId = memory.id {
+                    group.addTask { [weak self] in
+                        try await self?.db.collection(self?.memoriesCollection ?? "memories").document(memoryId).delete()
+                    }
+                }
+            }
+            try await group.waitForAll()
+        }
     }
 }

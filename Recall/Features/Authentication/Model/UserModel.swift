@@ -4,7 +4,7 @@ import FirebaseFirestore
 struct UserEntity: Codable, Identifiable {
 
     
-    @DocumentID var id: String?
+    var id: String?
     var email: String
     var fullName: String
     var profileImageUrl: String?

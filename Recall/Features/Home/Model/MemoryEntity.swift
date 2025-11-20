@@ -18,7 +18,7 @@ enum MemoryPriority: String, Codable, CaseIterable {
 }
 
 struct MemoryEntity: Codable, Identifiable {
-    @DocumentID var id: String?
+    var id: String?
     var userId: String
     var title: String
     var description: String?
@@ -89,6 +89,11 @@ struct MemoryEntity: Codable, Identifiable {
             "updated_at": Timestamp(date: updatedAt),
             "source": source.rawValue
         ]
+        
+        // Include ID if it exists
+        if let id = id {
+            dict["id"] = id
+        }
 
         if let description = description {
             dict["description"] = description
@@ -146,4 +151,52 @@ struct MemoryEntity: Codable, Identifiable {
 enum MemorySource: String, Codable {
     case manual = "manual"
     case siri = "siri"
+}
+
+// MARK: - User Memory Document for new structure
+struct UserMemoryDocument: Codable {
+    var uid: String
+    var memories: [MemoryEntity]
+    var lastUpdated: Date
+    
+    enum CodingKeys: String, CodingKey {
+        case uid
+        case memories
+        case lastUpdated = "last_updated"
+    }
+    
+    init(uid: String, memories: [MemoryEntity] = []) {
+        self.uid = uid
+        self.memories = memories
+        self.lastUpdated = Date()
+    }
+    
+    func toDictionary() -> [String: Any] {
+        return [
+            "uid": uid,
+            "memories": memories.map { $0.toDictionary() },
+            "last_updated": Timestamp(date: lastUpdated)
+        ]
+    }
+    
+    static func fromDictionary(_ dict: [String: Any]) -> UserMemoryDocument? {
+        guard let uid = dict["uid"] as? String,
+              let memoriesData = dict["memories"] as? [[String: Any]] else {
+            return nil
+        }
+        
+        let memories = memoriesData.compactMap { memoryDict in
+            // Use stored ID if available, otherwise generate a new one
+            let memoryId = memoryDict["id"] as? String ?? UUID().uuidString
+            return MemoryEntity.fromDictionary(memoryDict, id: memoryId)
+        }
+        
+        var document = UserMemoryDocument(uid: uid, memories: memories)
+        
+        if let lastUpdatedTimestamp = dict["last_updated"] as? Timestamp {
+            document.lastUpdated = lastUpdatedTimestamp.dateValue()
+        }
+        
+        return document
+    }
 }

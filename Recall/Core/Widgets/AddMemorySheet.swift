@@ -271,6 +271,13 @@ struct AddMemorySheet: View {
                         .disabled(title.isEmpty || viewModel.isLoading)
                         .opacity(title.isEmpty ? 0.5 : 1.0)
                         .padding(.top, 10)
+                        
+                        if let errorMessage = viewModel.errorMessage {
+                            Text(errorMessage)
+                                .font(.appCaption)
+                                .foregroundColor(.red)
+                                .padding(.top, 8)
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 30)
@@ -307,7 +314,9 @@ struct AddMemorySheet: View {
 
         Task {
             await viewModel.createMemory(memory)
-            dismiss()
+            if viewModel.errorMessage == nil {
+                dismiss()
+            }
         }
     }
 }

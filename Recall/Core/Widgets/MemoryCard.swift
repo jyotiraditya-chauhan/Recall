@@ -4,6 +4,10 @@ struct MemoryCard: View {
     let memory: MemoryEntity
     var onToggleComplete: (() -> Void)?
     var onDelete: (() -> Void)?
+    var onEdit: (() -> Void)?
+    var onReschedule: (() -> Void)?
+    
+    @State private var showActionMenu = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -99,6 +103,42 @@ struct MemoryCard: View {
         .background(Color(hex: "#1C1C1C"))
         .cornerRadius(12)
         .opacity(memory.isCompleted ? 0.6 : 1.0)
+        .onLongPressGesture {
+            showActionMenu = true
+        }
+        .confirmationDialog("Memory Actions", isPresented: $showActionMenu, titleVisibility: .visible) {
+            if memory.isCompleted {
+                Button("Mark as Incomplete") {
+                    onToggleComplete?()
+                }
+            } else {
+                Button("Mark as Complete") {
+                    onToggleComplete?()
+                }
+            }
+            
+            if onReschedule != nil {
+                Button("Reschedule") {
+                    onReschedule?()
+                }
+            }
+            
+            if onEdit != nil {
+                Button("Edit") {
+                    onEdit?()
+                }
+            }
+            
+            if onDelete != nil {
+                Button("Delete", role: .destructive) {
+                    onDelete?()
+                }
+            }
+            
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text(memory.title)
+        }
     }
 }
 

@@ -33,25 +33,99 @@ class ProfileViewModel: ProfileViewModelProtocol, ObservableObject {
     }
 
     func fetchUserProfile() async {
+        print("🔄 ProfileViewModel: Starting fetchUserProfile")
+        
         guard let userId = Auth.auth().currentUser?.uid else {
+            print("❌ ProfileViewModel: User not authenticated")
             errorMessage = "User not authenticated"
             return
         }
 
+        print("✅ ProfileViewModel: User authenticated with ID: \(userId)")
         isLoading = true
         errorMessage = nil
 
         do {
+            print("🔍 ProfileViewModel: Fetching user document from Firestore")
             let doc = try await db.collection("users").document(userId).getDocument()
+            
             if let data = doc.data() {
-                currentUser = try? Firestore.Decoder().decode(UserEntity.self, from: data)
-                notificationsEnabled = currentUser?.notificationsEnabled ?? true
+                print("✅ ProfileViewModel: User document found, data: \(data)")
+                currentUser = UserEntity.fromDictionary(data, id: userId)
+                
+                if let user = currentUser {
+                    print("✅ ProfileViewModel: User successfully decoded: \(user.email)")
+                    notificationsEnabled = user.notificationsEnabled
+                } else {
+                    print("❌ ProfileViewModel: Failed to decode user data")
+                    errorMessage = "Failed to decode user data"
+                }
+            } else {
+                print("⚠️ ProfileViewModel: User document doesn't exist, creating new one")
+                await createUserProfile(userId: userId)
             }
         } catch {
+            print("❌ ProfileViewModel: Error fetching user profile: \(error)")
             errorMessage = error.localizedDescription
         }
 
         isLoading = false
+        print("🔄 ProfileViewModel: fetchUserProfile completed. Current user: \(currentUser?.email ?? "nil")")
+    }
+    
+    private func createUserProfile(userId: String) async {
+        print("🔨 ProfileViewModel: Creating new user profile for ID: \(userId)")
+        
+        guard let firebaseUser = Auth.auth().currentUser else {
+            print("❌ ProfileViewModel: No Firebase user found")
+            return
+        }
+        
+        print("🔨 ProfileViewModel: Firebase user found - email: \(firebaseUser.email ?? "no email")")
+        
+        let userEntity = UserEntity(
+            id: userId,
+            email: firebaseUser.email ?? "",
+            fullName: firebaseUser.displayName ?? "User",
+            profileImageUrl: firebaseUser.photoURL?.absoluteString,
+            authProvider: determineAuthProvider(firebaseUser),
+            createdAt: Date(),
+            updatedAt: Date(),
+            totalMemories: 0,
+            notificationsEnabled: true,
+            isPremium: false
+        )
+        
+        print("🔨 ProfileViewModel: Created UserEntity: \(userEntity.email)")
+        
+        do {
+            let dictionary = userEntity.toDictionary()
+            print("🔨 ProfileViewModel: User dictionary: \(dictionary)")
+            
+            try await db.collection("users").document(userId).setData(dictionary)
+            print("✅ ProfileViewModel: Successfully saved user document to Firestore")
+            
+            currentUser = userEntity
+            notificationsEnabled = true
+            print("✅ ProfileViewModel: Set currentUser in memory")
+        } catch {
+            print("❌ ProfileViewModel: Failed to create user profile: \(error)")
+            errorMessage = "Failed to create user profile: \(error.localizedDescription)"
+        }
+    }
+    
+    private func determineAuthProvider(_ user: User) -> AuthProvider {
+        for userInfo in user.providerData {
+            switch userInfo.providerID {
+            case "google.com":
+                return .google
+            case "apple.com":
+                return .apple
+            default:
+                continue
+            }
+        }
+        return .email
     }
 
     func updateProfile(fullName: String?, profileImageUrl: String?) async {

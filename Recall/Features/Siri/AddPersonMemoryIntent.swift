@@ -37,6 +37,7 @@ struct PersonNameQuery: EntityQuery {
 struct AddPersonMemoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Remember About Person"
     static var description = IntentDescription("Store a memory about someone")
+    static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Memory", description: "What do you want to remember?")
     var memoryText: MemoryText
@@ -44,24 +45,19 @@ struct AddPersonMemoryIntent: AppIntent {
     @Parameter(title: "Person", description: "Who is this about?")
     var personName: PersonName
 
-    @Parameter(title: "Priority", description: "How important is this?", default: .medium)
-    var priority: MemoryPriorityIntent
-
     static var parameterSummary: some ParameterSummary {
-        Summary("Remember \(\.$memoryText) about \(\.$personName)") {
-            \.$priority
-        }
+        Summary("Remember \(\.$memoryText) about \(\.$personName)")
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let userId = Auth.auth().currentUser?.uid else {
-            throw AddMemoryError.notAuthenticated
+            return .result(dialog: "You need to log in to the Recall app first to save memories about people. Please open the app and create an account or sign in.")
         }
 
         let memory = MemoryEntity(
             userId: userId,
             title: memoryText.text,
-            priority: priority.toPriority(),
+            priority: .medium,
             relatedPerson: personName.name,
             source: .siri
         )
@@ -70,7 +66,7 @@ struct AddPersonMemoryIntent: AppIntent {
             _ = try await MemoryService.shared.createMemory(memory)
             return .result(dialog: "Saved memory about \(personName.name): \(memoryText.text)")
         } catch {
-            throw AddMemoryError.saveFailed
+            return .result(dialog: "Sorry, I couldn't save your memory about \(personName.name) right now. Please check your internet connection and try again, or save it directly in the app.")
         }
     }
 }

@@ -37,28 +37,24 @@ struct MemoryTextQuery: EntityQuery {
 struct AddMemoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Memory"
     static var description = IntentDescription("Store a thought or reminder that you want to remember")
+    static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Memory", description: "What do you want to remember?")
     var memoryText: MemoryText
 
-    @Parameter(title: "Priority", description: "How important is this?", default: .medium)
-    var priority: MemoryPriorityIntent
-
     static var parameterSummary: some ParameterSummary {
-        Summary("Remember \(\.$memoryText)") {
-            \.$priority
-        }
+        Summary("Remember \(\.$memoryText)")
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let userId = Auth.auth().currentUser?.uid else {
-            throw AddMemoryError.notAuthenticated
+            return .result(dialog: "You need to log in to the Recall app first to save memories. Please open the app and create an account or sign in.")
         }
 
         let memory = MemoryEntity(
             userId: userId,
             title: memoryText.text,
-            priority: priority.toPriority(),
+            priority: .medium,
             source: .siri
         )
 
@@ -66,7 +62,7 @@ struct AddMemoryIntent: AppIntent {
             _ = try await MemoryService.shared.createMemory(memory)
             return .result(dialog: "I've saved your memory: \(memoryText.text)")
         } catch {
-            throw AddMemoryError.saveFailed
+            return .result(dialog: "Sorry, I couldn't save your memory right now. Please check your internet connection and try again, or save it directly in the app.")
         }
     }
 }

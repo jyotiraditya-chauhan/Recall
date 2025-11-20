@@ -7,6 +7,22 @@ struct HomeView: View {
     @State private var showAddMemorySheet = false
     @State private var searchText = ""
     @State private var showFilterOptions = false
+    @State private var selectedMemory: MemoryEntity?
+    @State private var activeSheet: ActiveSheet?
+    
+    enum ActiveSheet: Identifiable {
+        case edit(MemoryEntity)
+        case reschedule(MemoryEntity)
+        
+        var id: String {
+            switch self {
+            case .edit(let memory):
+                return "edit-\(memory.id ?? "")"
+            case .reschedule(let memory):
+                return "reschedule-\(memory.id ?? "")"
+            }
+        }
+    }
 
     private var headerView: some View {
         VStack(spacing: 16) {
@@ -142,22 +158,22 @@ struct HomeView: View {
                     MemoryCard(
                         memory: memory,
                         onToggleComplete: {
+                            guard let memoryId = memory.id, !memoryId.isEmpty else { return }
                             Task { @MainActor in
-                                do {
-                                    await viewModel.toggleMemoryCompletion(memory.id ?? "")
-                                } catch {
-                                    viewModel.errorMessage = error.localizedDescription
-                                }
+                                await viewModel.toggleMemoryCompletion(memoryId)
                             }
                         },
                         onDelete: {
+                            guard let memoryId = memory.id, !memoryId.isEmpty else { return }
                             Task { @MainActor in
-                                do {
-                                    await viewModel.deleteMemory(memory.id ?? "")
-                                } catch {
-                                    viewModel.errorMessage = error.localizedDescription
-                                }
+                                await viewModel.deleteMemory(memoryId)
                             }
+                        },
+                        onEdit: {
+                            activeSheet = .edit(memory)
+                        },
+                        onReschedule: {
+                            activeSheet = .reschedule(memory)
                         }
                     )
                 }
@@ -249,7 +265,294 @@ struct HomeView: View {
         .sheet(isPresented: $showAddMemorySheet) {
             AddMemorySheet()
         }
+        .sheet(item: $activeSheet) { sheet in
+            Group {
+                switch sheet {
+                case .edit(let memory):
+                    EditMemorySheet(memory: memory) { updatedMemory in
+                        Task { @MainActor in
+                            await viewModel.updateMemory(updatedMemory)
+                            activeSheet = nil
+                        }
+                    }
+                case .reschedule(let memory):
+                    RescheduleMemorySheet(memory: memory) { updatedMemory in
+                        Task { @MainActor in
+                            await viewModel.updateMemory(updatedMemory)
+                            activeSheet = nil
+                        }
+                    }
+                }
+            }
+        }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            print("🏠 HomeView appeared - memories count: \(viewModel.memories.count)")
+            if let userId = authViewModel.currentUser?.id {
+                print("👤 Current user ID: \(userId)")
+            } else {
+                print("❌ No current user found")
+            }
+        }
+    }
+}
+
+// MARK: - Edit Memory Sheet
+struct EditMemorySheet: View {
+    let memory: MemoryEntity
+    let onSave: (MemoryEntity) -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var title: String = ""
+    @State private var description: String = ""
+    @State private var priority: MemoryPriority = .medium
+    @State private var tags: [String] = []
+    @State private var relatedPerson: String = ""
+    @State private var relatedTo: String = ""
+    @State private var newTag: String = ""
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Title")
+                            .font(.appBodyLarge)
+                            .foregroundColor(AppColor.white)
+                        
+                        TextField("Enter memory title", text: $title)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .background(Color(hex: "#1C1C1C"))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Description")
+                            .font(.appBodyLarge)
+                            .foregroundColor(AppColor.white)
+                        
+                        TextField("Enter description (optional)", text: $description, axis: .vertical)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .lineLimit(3...6)
+                            .background(Color(hex: "#1C1C1C"))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Priority")
+                            .font(.appBodyLarge)
+                            .foregroundColor(AppColor.white)
+                        
+                        Picker("Priority", selection: $priority) {
+                            ForEach(MemoryPriority.allCases, id: \.self) { priority in
+                                Text(priority.rawValue).tag(priority)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Related Person")
+                            .font(.appBodyLarge)
+                            .foregroundColor(AppColor.white)
+                        
+                        TextField("Person name (optional)", text: $relatedPerson)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .background(Color(hex: "#1C1C1C"))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Related To")
+                            .font(.appBodyLarge)
+                            .foregroundColor(AppColor.white)
+                        
+                        TextField("Related context (optional)", text: $relatedTo)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .background(Color(hex: "#1C1C1C"))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Tags")
+                            .font(.appBodyLarge)
+                            .foregroundColor(AppColor.white)
+                        
+                        HStack {
+                            TextField("Add tag", text: $newTag)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .background(Color(hex: "#1C1C1C"))
+                            
+                            Button("Add") {
+                                if !newTag.isEmpty && !tags.contains(newTag) {
+                                    tags.append(newTag)
+                                    newTag = ""
+                                }
+                            }
+                            .foregroundColor(AppColor.primary)
+                        }
+                        
+                        if !tags.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack {
+                                    ForEach(tags, id: \.self) { tag in
+                                        HStack {
+                                            Text(tag)
+                                                .font(.appCaption)
+                                            
+                                            Button("×") {
+                                                tags.removeAll { $0 == tag }
+                                            }
+                                            .foregroundColor(.red)
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(AppColor.primary.opacity(0.3))
+                                        .cornerRadius(8)
+                                        .foregroundColor(AppColor.white)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    Button("Save Changes") {
+                        var updatedMemory = memory
+                        updatedMemory.title = title
+                        updatedMemory.description = description.isEmpty ? nil : description
+                        updatedMemory.priority = priority
+                        updatedMemory.relatedPerson = relatedPerson.isEmpty ? nil : relatedPerson
+                        updatedMemory.relatedTo = relatedTo.isEmpty ? nil : relatedTo
+                        updatedMemory.tags = tags
+                        updatedMemory.updatedAt = Date()
+                        
+                        onSave(updatedMemory)
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                    .font(.appBodyLarge)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(AppColor.primary)
+                    .cornerRadius(12)
+                }
+                .padding()
+            }
+            .background(Color.black)
+            .navigationTitle("Edit Memory")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(AppColor.primary)
+                }
+            }
+        }
+        .onAppear {
+            title = memory.title
+            description = memory.description ?? ""
+            priority = memory.priority
+            relatedPerson = memory.relatedPerson ?? ""
+            relatedTo = memory.relatedTo ?? ""
+            tags = memory.tags
+        }
+    }
+}
+
+// MARK: - Reschedule Memory Sheet
+struct RescheduleMemorySheet: View {
+    let memory: MemoryEntity
+    let onSave: (MemoryEntity) -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var selectedDate = Date()
+    @State private var hasDate = false
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 30) {
+                VStack(spacing: 16) {
+                    Text("Reschedule Memory")
+                        .font(.appScreenTitle)
+                        .foregroundColor(AppColor.white)
+                    
+                    Text(memory.title)
+                        .font(.appHeadline)
+                        .foregroundColor(AppColor.grey)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                }
+                
+                VStack(spacing: 20) {
+                    Toggle("Set reminder date", isOn: $hasDate)
+                        .font(.appBodyLarge)
+                        .foregroundColor(AppColor.white)
+                        .tint(AppColor.primary)
+                    
+                    if hasDate {
+                        DatePicker(
+                            "Select Date",
+                            selection: $selectedDate,
+                            in: Date()...,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                        .datePickerStyle(WheelDatePickerStyle())
+                        .colorScheme(.dark)
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(spacing: 16) {
+                    Button("Save Reschedule") {
+                        var updatedMemory = memory
+                        updatedMemory.dateToRemember = hasDate ? selectedDate : nil
+                        updatedMemory.updatedAt = Date()
+                        
+                        onSave(updatedMemory)
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                    .font(.appBodyLarge)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(AppColor.primary)
+                    .cornerRadius(12)
+                    
+                    if memory.dateToRemember != nil {
+                        Button("Remove Date") {
+                            var updatedMemory = memory
+                            updatedMemory.dateToRemember = nil
+                            updatedMemory.updatedAt = Date()
+                            
+                            onSave(updatedMemory)
+                            dismiss()
+                        }
+                        .foregroundColor(.red)
+                        .font(.appBodyLarge)
+                    }
+                }
+            }
+            .padding()
+            .background(Color.black)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(AppColor.primary)
+                }
+            }
+        }
+        .onAppear {
+            if let existingDate = memory.dateToRemember {
+                selectedDate = existingDate
+                hasDate = true
+            } else {
+                selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+                hasDate = false
+            }
+        }
     }
 }
 

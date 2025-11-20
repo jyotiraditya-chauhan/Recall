@@ -29,20 +29,10 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
-	<key>AppIntents</key>
-	<array>
-		<dict>
-			<key>IntentClassName</key>
-			<string>AddMemoryIntent</string>
-		</dict>
-		<dict>
-			<key>IntentClassName</key>
-			<string>AddUrgentMemoryIntent</string>
-		</dict>
-		<dict>
-			<key>IntentClassName</key>
-			<string>AddPersonMemoryIntent</string>
-		</dict>
-	</array>
+	<key>NSAppShortcuts</key>
+	<dict>
+		<key>Provider</key>
+		<string>RecallAppShortcuts</string>
+	</dict>
 </dict>
 </plist>
