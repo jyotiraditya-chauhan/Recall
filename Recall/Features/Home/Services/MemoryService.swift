@@ -139,21 +139,25 @@ class MemoryService {
         ])
     }
 
-    func listenToMemories(forUserId userId: String, completion: @escaping ([MemoryEntity]) -> Void) -> ListenerRegistration {
+    func listenToMemories(forUserId userId: String, completion: @MainActor @escaping ([MemoryEntity]) -> Void) -> ListenerRegistration {
         return db.collection(memoriesCollection)
             .whereField("user_id", isEqualTo: userId)
             .order(by: "created_at", descending: true)
             .addSnapshotListener { snapshot, error in
                 guard let documents = snapshot?.documents else {
                     print("Error fetching memories: \(error?.localizedDescription ?? "Unknown error")")
-                    completion([])
+                    Task { @MainActor in
+                        completion([])
+                    }
                     return
                 }
 
                 let memories = documents.compactMap { doc in
                     MemoryEntity.fromDictionary(doc.data(), id: doc.documentID)
                 }
-                completion(memories)
+                Task { @MainActor in
+                    completion(memories)
+                }
             }
     }
 }

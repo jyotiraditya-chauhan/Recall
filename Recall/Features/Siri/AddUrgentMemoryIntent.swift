@@ -7,7 +7,7 @@ struct AddUrgentMemoryIntent: AppIntent {
     static var description = IntentDescription("Store an urgent thought or reminder")
 
     @Parameter(title: "Memory", description: "What do you want to remember urgently?")
-    var memoryText: String
+    var memoryText: MemoryText
 
     static var parameterSummary: some ParameterSummary {
         Summary("Remember urgently \(\.$memoryText)")
@@ -20,14 +20,14 @@ struct AddUrgentMemoryIntent: AppIntent {
 
         let memory = MemoryEntity(
             userId: userId,
-            title: memoryText,
+            title: memoryText.text,
             priority: .urgent,
             source: .siri
         )
 
         do {
             _ = try await MemoryService.shared.createMemory(memory)
-            return .result(dialog: "Urgent memory saved: \(memoryText)")
+            return .result(dialog: "Urgent memory saved: \(memoryText.text)")
         } catch {
             throw AddMemoryError.saveFailed
         }

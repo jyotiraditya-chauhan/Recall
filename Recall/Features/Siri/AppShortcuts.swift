@@ -1,7 +1,27 @@
 import AppIntents
 
+struct OpenHomeIntent: AppIntent {
+    static var title: LocalizedStringResource = "Open Home Screen"
+    static var openAppWhenRun: Bool { true }
+
+    func perform() async throws -> some IntentResult {
+        return .result()
+    }
+}
+
 struct RecallAppShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(
+            intent: OpenHomeIntent(),
+            phrases: [
+                "Open Home Screen in \(.applicationName)",
+                "Show Home Page in \(.applicationName)",
+                "Open \(.applicationName) Home Screen",
+                "Show \(.applicationName) Home"
+            ],
+            shortTitle: "Open Home",
+            systemImageName: "house"
+        )
         AppShortcut(
             intent: AddMemoryIntent(),
             phrases: [
@@ -41,10 +61,10 @@ struct RecallAppShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: AddPersonMemoryIntent(),
             phrases: [
-                "Remember \(\.$memoryText) about \(\.$personName) in \(.applicationName)",
-                "Save \(\.$memoryText) for \(\.$personName) in \(.applicationName)",
-                "Note about \(\.$personName) \(\.$memoryText) in \(.applicationName)",
-                "Remember \(\.$personName) \(\.$memoryText) in \(.applicationName)"
+                "Remember about person in \(.applicationName)",
+                "Save memory about someone in \(.applicationName)",
+                "Note about person in \(.applicationName)",
+                "Add person memory in \(.applicationName)"
             ],
             shortTitle: "Remember About Person",
             systemImageName: "person.fill"

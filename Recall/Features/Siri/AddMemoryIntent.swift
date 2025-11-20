@@ -2,27 +2,51 @@ import Foundation
 import AppIntents
 import FirebaseAuth
 
+struct MemoryText: AppEntity {
+    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Memory Text")
+    
+    var displayRepresentation: DisplayRepresentation {
+        return DisplayRepresentation(title: "\(text)")
+    }
+    
+    var id: String { text }
+    let text: String
+    
+    init(text: String) {
+        self.text = text
+    }
+    
+    static var defaultQuery = MemoryTextQuery()
+}
+
+struct MemoryTextQuery: EntityQuery {
+    func entities(for identifiers: [MemoryText.ID]) async throws -> [MemoryText] {
+        return identifiers.map { MemoryText(text: $0) }
+    }
+    
+    func suggestedEntities() async throws -> [MemoryText] {
+        return [
+            MemoryText(text: "Buy groceries"),
+            MemoryText(text: "Call mom"),
+            MemoryText(text: "Meeting at 3pm"),
+            MemoryText(text: "Take medication")
+        ]
+    }
+}
+
 struct AddMemoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Memory"
     static var description = IntentDescription("Store a thought or reminder that you want to remember")
 
     @Parameter(title: "Memory", description: "What do you want to remember?")
-    var memoryText: String
+    var memoryText: MemoryText
 
     @Parameter(title: "Priority", description: "How important is this?", default: .medium)
     var priority: MemoryPriorityIntent
 
-    @Parameter(title: "Related Person", description: "Is this about someone?")
-    var relatedPerson: String?
-
-    @Parameter(title: "Related To", description: "What is this related to?")
-    var relatedTo: String?
-
     static var parameterSummary: some ParameterSummary {
         Summary("Remember \(\.$memoryText)") {
             \.$priority
-            \.$relatedPerson
-            \.$relatedTo
         }
     }
 
@@ -33,16 +57,14 @@ struct AddMemoryIntent: AppIntent {
 
         let memory = MemoryEntity(
             userId: userId,
-            title: memoryText,
+            title: memoryText.text,
             priority: priority.toPriority(),
-            relatedPerson: relatedPerson,
-            relatedTo: relatedTo,
             source: .siri
         )
 
         do {
             _ = try await MemoryService.shared.createMemory(memory)
-            return .result(dialog: "I've saved your memory: \(memoryText)")
+            return .result(dialog: "I've saved your memory: \(memoryText.text)")
         } catch {
             throw AddMemoryError.saveFailed
         }

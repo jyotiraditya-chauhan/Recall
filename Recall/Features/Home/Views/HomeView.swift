@@ -142,13 +142,21 @@ struct HomeView: View {
                     MemoryCard(
                         memory: memory,
                         onToggleComplete: {
-                            Task {
-                                await viewModel.toggleMemoryCompletion(memory.id ?? "")
+                            Task { @MainActor in
+                                do {
+                                    await viewModel.toggleMemoryCompletion(memory.id ?? "")
+                                } catch {
+                                    viewModel.errorMessage = error.localizedDescription
+                                }
                             }
                         },
                         onDelete: {
-                            Task {
-                                await viewModel.deleteMemory(memory.id ?? "")
+                            Task { @MainActor in
+                                do {
+                                    await viewModel.deleteMemory(memory.id ?? "")
+                                } catch {
+                                    viewModel.errorMessage = error.localizedDescription
+                                }
                             }
                         }
                     )

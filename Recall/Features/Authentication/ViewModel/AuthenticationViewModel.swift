@@ -52,14 +52,14 @@ class AuthenticationViewModel: AuthenticationViewModelProtocol, ObservableObject
     
     private func setupAuthStateListener() {
         authService.auth.addStateDidChangeListener { [weak self] _, user in
-            Task { @MainActor in
-                if let user = user {
-                    self?.isAuthenticated = true
+            if let user = user {
+                self?.isAuthenticated = true
+                Task {
                     await self?.fetchUserData(uid: user.uid)
-                } else {
-                    self?.isAuthenticated = false
-                    self?.currentUser = nil
                 }
+            } else {
+                self?.isAuthenticated = false
+                self?.currentUser = nil
             }
         }
     }

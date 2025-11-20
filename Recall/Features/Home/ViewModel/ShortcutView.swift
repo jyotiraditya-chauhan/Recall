@@ -8,38 +8,13 @@ import AppIntents
 import SwiftUI
 import Combine
 
-struct ShortcutView: AppShortcutsProvider {
-
-    @AppShortcutsBuilder
-    static var appShortcuts: [AppShortcut] {
-        AppShortcut(
-            intent: OpenHomeIntent(),
-            phrases: [
-                "Open Home Screen in ${applicationName}",
-                "Show Home Page in ${applicationName}",
-                "Open ${applicationName} Home Screen",
-                "Show ${applicationName} Home"
-            ],
-            shortTitle: "Open Home",
-            systemImageName: "house"
-        )
+struct ShortcutView: View {
+    var body: some View {
+        Text("Shortcuts")
     }
 }
 
 
-struct OpenHomeIntent: AppIntent {
-    static var title: LocalizedStringResource = "Open Home Screen"
-    static var openAppWhenRun: Bool { true }
-
-    @AppStorage("intentLaunchAction")
-    private var launchAction: String = ""
-
-    @MainActor
-    func perform() async throws -> some IntentResult {
-        launchAction = "open_home"
-        return .result()
-    }
-}
 
 
 

@@ -119,10 +119,14 @@ class ProfileViewModel: ProfileViewModelProtocol, ObservableObject {
         errorMessage = nil
 
         do {
-            try await db.collection("memories").whereField("user_id", isEqualTo: userId).getDocuments().documents.forEach { doc in
-                Task {
-                    try await doc.reference.delete()
+            let documents = try await db.collection("memories").whereField("user_id", isEqualTo: userId).getDocuments().documents
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for doc in documents {
+                    group.addTask {
+                        try await doc.reference.delete()
+                    }
                 }
+                try await group.waitForAll()
             }
 
             try await db.collection("users").document(userId).delete()
