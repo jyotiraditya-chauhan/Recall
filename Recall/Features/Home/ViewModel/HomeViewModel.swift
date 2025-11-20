@@ -17,7 +17,7 @@ protocol HomeViewModelProtocol: ObservableObject {
     func deleteMemory(_ memoryId: String) async
     func toggleMemoryCompletion(_ memoryId: String) async
     func startListeningToMemories()
-    func stopListeningToMemories()
+    nonisolated func stopListeningToMemories()
 }
 
 @MainActor
@@ -147,7 +147,7 @@ class HomeViewModel: HomeViewModelProtocol, ObservableObject {
         }
     }
 
-    func stopListeningToMemories() {
+    nonisolated func stopListeningToMemories() {
         memoryListener?.remove()
         memoryListener = nil
     }
