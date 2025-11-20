@@ -23,6 +23,8 @@ struct RoutingView<Root: View>: View {
                         
                     case .home:
                         HomeView().navigationBarBackButtonHidden(true)
+                    case .profile:
+                        ProfileView().navigationBarBackButtonHidden(true)
                     }
                 }
         }
