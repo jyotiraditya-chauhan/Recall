@@ -45,3 +45,4 @@ struct ContentView: View {
         .environmentObject(Router())
         .environmentObject(AuthenticationViewModel.shared)
 }
+
