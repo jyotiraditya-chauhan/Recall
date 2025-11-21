@@ -117,15 +117,6 @@ struct LoginView: View {
                             }
                         })
                         .disabled(authViewModel.isLoading)
-                        
-                        CustomOutlineButton(icon: "apple_logo",
-                                            title: "Continue With Apple",
-                                            action: {
-                            Task{
-                                await handleAppleSignIn()
-                            }
-                        })
-                        .disabled(authViewModel.isLoading)
                     }
                     .padding(.bottom, 52)
                     
@@ -167,12 +158,7 @@ struct LoginView: View {
         localError = ""
         await authViewModel.signInWithGoogle()
     }
-    
-    private func handleAppleSignIn() async {
-        localError = ""
-        await authViewModel.signInWithApple()
-    }
-    
+
     private func validateInput() -> Bool {
         if email.isEmpty || password.isEmpty {
             localError = "All fields are required."
