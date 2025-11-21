@@ -28,8 +28,9 @@ struct RecallAppShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: AddPersonMemoryIntent(),
             phrases: [
-                "Remember \(\.$memoryText) about \(\.$personName) in \(.applicationName)",
-                "Save \(\.$memoryText) about \(\.$personName) in \(.applicationName)"
+                "Remember about \(\.$personName) in \(.applicationName)",
+                "Save about \(\.$personName) in \(.applicationName)",
+                "Person memory for \(\.$personName) in \(.applicationName)"
             ],
             shortTitle: "Remember About Person",
             systemImageName: "person.fill"
