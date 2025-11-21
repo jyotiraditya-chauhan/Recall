@@ -2,79 +2,67 @@ import Foundation
 import AppIntents
 import FirebaseAuth
 
-struct PersonName: AppEntity {
-    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Person Name")
-    
-    var displayRepresentation: DisplayRepresentation {
-        return DisplayRepresentation(title: "\(name)")
-    }
-    
-    var id: String { name }
-    let name: String
-    
-    init(name: String) {
-        self.name = name
-    }
-    
-    static var defaultQuery = PersonNameQuery()
-}
-
-struct PersonNameQuery: EntityQuery, EntityStringQuery {
-    func entities(for identifiers: [PersonName.ID]) async throws -> [PersonName] {
-        return identifiers.map { PersonName(name: $0) }
-    }
-
-    /// This method is called by Siri when the user provides voice input for person name
-    func entities(matching string: String) async throws -> [PersonName] {
-        guard !string.isEmpty else {
-            return []
-        }
-        return [PersonName(name: string)]
-    }
-
-    func suggestedEntities() async throws -> [PersonName] {
-        return [
-            PersonName(name: "John"),
-            PersonName(name: "Mom"),
-            PersonName(name: "Dad"),
-            PersonName(name: "Sarah")
-        ]
-    }
-}
+// MARK: - Add Person Memory Intent
+// Note: This intent is available in Shortcuts app but not registered as an App Shortcut
+// because multi-parameter Siri phrases are unreliable. Users can still create
+// custom shortcuts using this intent in the Shortcuts app.
 
 struct AddPersonMemoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Remember About Person"
-    static var description = IntentDescription("Store a memory about someone")
+    static var description = IntentDescription("Save a memory about someone to Recall")
+
     static var openAppWhenRun: Bool = false
 
-    @Parameter(title: "Memory", description: "What do you want to remember?")
-    var memoryText: MemoryText
+    @Parameter(
+        title: "Memory",
+        description: "What do you want to remember?",
+        requestValueDialog: "What would you like to remember?"
+    )
+    var memoryText: String
 
-    @Parameter(title: "Person", description: "Who is this about?")
-    var personName: PersonName
+    @Parameter(
+        title: "Person",
+        description: "Who is this about?",
+        requestValueDialog: "Who is this memory about?"
+    )
+    var personName: String
 
     static var parameterSummary: some ParameterSummary {
         Summary("Remember \(\.$memoryText) about \(\.$personName)")
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        // Check authentication
         guard let userId = Auth.auth().currentUser?.uid else {
-            return .result(dialog: "You need to log in to the Recall app first to save memories about people. Please open the app and create an account or sign in.")
+            return .result(dialog: "Please open Recall and sign in first to save memories.")
         }
 
+        // Validate input
+        let trimmedText = memoryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPerson = personName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedText.isEmpty else {
+            return .result(dialog: "Please tell me what you'd like to remember.")
+        }
+
+        guard !trimmedPerson.isEmpty else {
+            return .result(dialog: "Please tell me who this memory is about.")
+        }
+
+        // Create and save the memory
         let memory = MemoryEntity(
             userId: userId,
-            title: memoryText.text,
+            title: trimmedText,
             priority: .medium,
-            relatedPerson: personName.name,
+            relatedPerson: trimmedPerson,
             source: .siri
         )
 
         do {
             _ = try await MemoryService.shared.createMemory(memory)
-            return .result(dialog: "Saved memory about \(personName.name): \(memoryText.text)")
+            return .result(dialog: "Saved memory about \(trimmedPerson): \(trimmedText)")
         } catch {
-            return .result(dialog: "Sorry, I couldn't save your memory about \(personName.name) right now. Please check your internet connection and try again, or save it directly in the app.")
+            return .result(dialog: "Sorry, I couldn't save that right now. Please try again.")
         }
     }
 }

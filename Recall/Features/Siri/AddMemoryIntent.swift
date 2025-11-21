@@ -2,81 +2,56 @@ import Foundation
 import AppIntents
 import FirebaseAuth
 
-struct MemoryText: AppEntity {
-    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Memory Text")
-    
-    var displayRepresentation: DisplayRepresentation {
-        return DisplayRepresentation(title: "\(text)")
-    }
-    
-    var id: String { text }
-    let text: String
-    
-    init(text: String) {
-        self.text = text
-    }
-    
-    static var defaultQuery = MemoryTextQuery()
-}
-
-struct MemoryTextQuery: EntityQuery, EntityStringQuery {
-    func entities(for identifiers: [MemoryText.ID]) async throws -> [MemoryText] {
-        return identifiers.map { MemoryText(text: $0) }
-    }
-
-    /// This method is called by Siri when the user provides voice input
-    /// It converts the spoken text into a MemoryText entity
-    func entities(matching string: String) async throws -> [MemoryText] {
-        // Return the spoken text as a MemoryText entity
-        // This is the key method that enables Siri voice input to work
-        guard !string.isEmpty else {
-            return []
-        }
-        return [MemoryText(text: string)]
-    }
-
-    func suggestedEntities() async throws -> [MemoryText] {
-        return [
-            MemoryText(text: "Buy groceries"),
-            MemoryText(text: "Call mom"),
-            MemoryText(text: "Meeting at 3pm"),
-            MemoryText(text: "Take medication")
-        ]
-    }
-}
+// MARK: - Add Memory Intent
 
 struct AddMemoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Memory"
-    static var description = IntentDescription("Store a thought or reminder that you want to remember")
+    static var description = IntentDescription("Save a thought or reminder to Recall")
+
+    /// When false, Siri executes the intent without opening the app
     static var openAppWhenRun: Bool = false
 
-    @Parameter(title: "Memory", description: "What do you want to remember?")
-    var memoryText: MemoryText
+    @Parameter(
+        title: "Memory",
+        description: "What do you want to remember?",
+        requestValueDialog: "What would you like to remember?"
+    )
+    var memoryText: String
 
     static var parameterSummary: some ParameterSummary {
         Summary("Remember \(\.$memoryText)")
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        // Check authentication
         guard let userId = Auth.auth().currentUser?.uid else {
-            return .result(dialog: "You need to log in to the Recall app first to save memories. Please open the app and create an account or sign in.")
+            return .result(dialog: "Please open Recall and sign in first to save memories.")
         }
 
+        // Validate input
+        let trimmedText = memoryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty else {
+            return .result(dialog: "Please tell me what you'd like to remember.")
+        }
+
+        // Create and save the memory
         let memory = MemoryEntity(
             userId: userId,
-            title: memoryText.text,
+            title: trimmedText,
             priority: .medium,
             source: .siri
         )
 
         do {
             _ = try await MemoryService.shared.createMemory(memory)
-            return .result(dialog: "I've saved your memory: \(memoryText.text)")
+            return .result(dialog: "Saved: \(trimmedText)")
         } catch {
-            return .result(dialog: "Sorry, I couldn't save your memory right now. Please check your internet connection and try again, or save it directly in the app.")
+            return .result(dialog: "Sorry, I couldn't save that right now. Please try again.")
         }
     }
 }
+
+// MARK: - Priority Enum for Intents
 
 enum MemoryPriorityIntent: String, AppEnum {
     case low = "Low"
@@ -103,6 +78,8 @@ enum MemoryPriorityIntent: String, AppEnum {
     }
 }
 
+// MARK: - Error Types
+
 enum AddMemoryError: Error, CustomLocalizedStringResourceConvertible {
     case notAuthenticated
     case saveFailed
@@ -110,9 +87,9 @@ enum AddMemoryError: Error, CustomLocalizedStringResourceConvertible {
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .notAuthenticated:
-            return "Please log in to save memories"
+            return "Please sign in to save memories"
         case .saveFailed:
-            return "Failed to save memory. Please try again"
+            return "Failed to save memory. Please try again."
         }
     }
 }
