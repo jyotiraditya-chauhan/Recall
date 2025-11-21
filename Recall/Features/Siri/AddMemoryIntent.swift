@@ -2,13 +2,12 @@ import Foundation
 import AppIntents
 import FirebaseAuth
 
-// MARK: - Add Memory Intent
+
 
 struct AddMemoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Memory"
     static var description = IntentDescription("Save a thought or reminder to Recall")
 
-    /// When false, Siri executes the intent without opening the app
     static var openAppWhenRun: Bool = false
 
     @Parameter(
@@ -23,18 +22,16 @@ struct AddMemoryIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        // Check authentication
+
         guard let userId = Auth.auth().currentUser?.uid else {
             return .result(dialog: "Please open Recall and sign in first to save memories.")
         }
 
-        // Validate input
+    
         let trimmedText = memoryText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else {
             return .result(dialog: "Please tell me what you'd like to remember.")
         }
-
-        // Create and save the memory
         let memory = MemoryEntity(
             userId: userId,
             title: trimmedText,
@@ -50,8 +47,6 @@ struct AddMemoryIntent: AppIntent {
         }
     }
 }
-
-// MARK: - Priority Enum for Intents
 
 enum MemoryPriorityIntent: String, AppEnum {
     case low = "Low"
@@ -77,8 +72,6 @@ enum MemoryPriorityIntent: String, AppEnum {
         }
     }
 }
-
-// MARK: - Error Types
 
 enum AddMemoryError: Error, CustomLocalizedStringResourceConvertible {
     case notAuthenticated

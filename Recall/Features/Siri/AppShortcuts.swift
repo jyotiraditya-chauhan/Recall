@@ -2,15 +2,10 @@ import AppIntents
 
 struct RecallAppShortcuts: AppShortcutsProvider {
 
-    /// Color displayed in Shortcuts app
     static var shortcutTileColor: ShortcutTileColor = .navy
 
     @AppShortcutsBuilder
     static var appShortcuts: [AppShortcut] {
-
-        // MARK: - Add Memory Intent
-        // Simple phrases without parameters work best with Siri
-        // Siri will prompt for the memory text after recognizing the phrase
         AppShortcut(
             intent: AddMemoryIntent(),
             phrases: [
@@ -25,7 +20,7 @@ struct RecallAppShortcuts: AppShortcutsProvider {
             systemImageName: "brain.head.profile"
         )
 
-        // MARK: - Add Urgent Memory Intent
+    
         AppShortcut(
             intent: AddUrgentMemoryIntent(),
             phrases: [
@@ -41,9 +36,10 @@ struct RecallAppShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: AddPersonMemoryIntent(),
             phrases: [
-                "Remember about \(\.$personName) in \(.applicationName)",
-                "Save about \(\.$personName) in \(.applicationName)",
-                "Person memory for \(\.$personName) in \(.applicationName)"
+                "Remember about someone in \(.applicationName)",
+                "Save about a person in \(.applicationName)",
+                "Person memory in \(.applicationName)",
+                "Add person note in \(.applicationName)"
             ],
             shortTitle: "Remember About Person",
             systemImageName: "person.fill"

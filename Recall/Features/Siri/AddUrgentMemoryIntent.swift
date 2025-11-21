@@ -2,13 +2,11 @@ import Foundation
 import AppIntents
 import FirebaseAuth
 
-// MARK: - Add Urgent Memory Intent
 
 struct AddUrgentMemoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Urgent Memory"
     static var description = IntentDescription("Save an urgent thought or reminder to Recall")
 
-    /// When false, Siri executes the intent without opening the app
     static var openAppWhenRun: Bool = false
 
     @Parameter(
@@ -23,18 +21,14 @@ struct AddUrgentMemoryIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        // Check authentication
+
         guard let userId = Auth.auth().currentUser?.uid else {
             return .result(dialog: "Please open Recall and sign in first to save memories.")
         }
-
-        // Validate input
         let trimmedText = memoryText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else {
             return .result(dialog: "Please tell me what urgent thing you'd like to remember.")
         }
-
-        // Create and save the urgent memory
         let memory = MemoryEntity(
             userId: userId,
             title: trimmedText,

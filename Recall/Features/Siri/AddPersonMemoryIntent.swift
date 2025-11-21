@@ -2,10 +2,6 @@ import Foundation
 import AppIntents
 import FirebaseAuth
 
-// MARK: - Add Person Memory Intent
-// Note: This intent is available in Shortcuts app but not registered as an App Shortcut
-// because multi-parameter Siri phrases are unreliable. Users can still create
-// custom shortcuts using this intent in the Shortcuts app.
 
 struct AddPersonMemoryIntent: AppIntent {
     static var title: LocalizedStringResource = "Remember About Person"
@@ -32,12 +28,11 @@ struct AddPersonMemoryIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        // Check authentication
         guard let userId = Auth.auth().currentUser?.uid else {
             return .result(dialog: "Please open Recall and sign in first to save memories.")
         }
 
-        // Validate input
+    
         let trimmedText = memoryText.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedPerson = personName.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -49,7 +44,7 @@ struct AddPersonMemoryIntent: AppIntent {
             return .result(dialog: "Please tell me who this memory is about.")
         }
 
-        // Create and save the memory
+    
         let memory = MemoryEntity(
             userId: userId,
             title: trimmedText,
