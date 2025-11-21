@@ -2,7 +2,6 @@ import AppIntents
 
 struct RecallAppShortcuts: AppShortcutsProvider {
 
-    static var shortcutTileColor: ShortcutTileColor = .navy
 
     @AppShortcutsBuilder
     static var appShortcuts: [AppShortcut] {
@@ -33,6 +32,17 @@ struct RecallAppShortcuts: AppShortcutsProvider {
             systemImageName: "exclamationmark.triangle.fill"
         )
 
+//        AppShortcut(
+//            intent: AddPersonMemoryIntent(),
+//            phrases: [
+//                "Save about a person in \(.applicationName)",
+//                "Person memory in \(.applicationName)",
+//                "Add person note in \(.applicationName)"
+//            ],
+//            shortTitle: "Remember About Person",
+//            systemImageName: "person.fill"
+//        )
+        
         AppShortcut(
             intent: AddPersonMemoryIntent(),
             phrases: [

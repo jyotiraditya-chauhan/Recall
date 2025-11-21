@@ -5,6 +5,7 @@ import FirebaseAuth
 enum MemoryError: Error, LocalizedError {
     case userNotAuthenticated
     case memoryNotFound
+    
     case invalidData
     case firestoreError(String)
 
@@ -25,45 +26,38 @@ enum MemoryError: Error, LocalizedError {
 class MemoryService {
     static let shared = MemoryService()
     private init() {}
-
     private let db = Firestore.firestore()
-    private let memoriesCollection = "memories"
+    private let memoriesCollection = "memories";
 
-    
     private func getUserMemoryDocument(userId: String) async throws -> UserMemoryDocument {
         let doc = try await db.collection(memoriesCollection).document(userId).getDocument()
-        
         if let data = doc.data(), let userDoc = UserMemoryDocument.fromDictionary(data) {
-            return userDoc
+                    return userDoc
         } else {
-            // Create new document if it doesn't exist
-            let newDoc = UserMemoryDocument(uid: userId)
+                    let newDoc = UserMemoryDocument(uid: userId)
             try await db.collection(memoriesCollection).document(userId).setData(newDoc.toDictionary())
             return newDoc
         }
     }
-    
     private func saveUserMemoryDocument(_ document: UserMemoryDocument) async throws {
         var updatedDoc = document
         updatedDoc.lastUpdated = Date()
         try await db.collection(memoriesCollection).document(document.uid).setData(updatedDoc.toDictionary())
     }
 
+    
+    
     func createMemory(_ memory: MemoryEntity) async throws -> MemoryEntity {
         guard let userId = Auth.auth().currentUser?.uid else {
-            throw MemoryError.userNotAuthenticated
-        }
-
+            throw MemoryError.userNotAuthenticated}
         var userDoc = try await getUserMemoryDocument(userId: userId)
-        
-
         var newMemory = memory
         newMemory.id = UUID().uuidString
+        
         newMemory.userId = userId
         newMemory.createdAt = Date()
         newMemory.updatedAt = Date()
-        
-    
+
         userDoc.memories.append(newMemory)
         
     try await saveUserMemoryDocument(userDoc)
@@ -102,13 +96,9 @@ class MemoryService {
         guard let index = userDoc.memories.firstIndex(where: { $0.id == memoryId }) else {
             throw MemoryError.memoryNotFound
         }
-        
-        // Update memory
         var updatedMemory = memory
         updatedMemory.updatedAt = Date()
         userDoc.memories[index] = updatedMemory
-        
-        // Save updated document
         try await saveUserMemoryDocument(userDoc)
     }
 
@@ -118,14 +108,10 @@ class MemoryService {
         guard let index = userDoc.memories.firstIndex(where: { $0.id == memoryId }) else {
             throw MemoryError.memoryNotFound
         }
-        
-        // Remove memory from array
         userDoc.memories.remove(at: index)
-        
-        // Save updated document
+    
         try await saveUserMemoryDocument(userDoc)
         
-        // Update user memory count
         try await updateUserMemoryCount(userId: userId, increment: -1)
     }
 
@@ -139,12 +125,10 @@ class MemoryService {
         guard let index = userDoc.memories.firstIndex(where: { $0.id == memoryId }) else {
             throw MemoryError.memoryNotFound
         }
-        
-        // Toggle completion
+    
         userDoc.memories[index].isCompleted.toggle()
         userDoc.memories[index].updatedAt = Date()
-        
-        // Save updated document
+    
         try await saveUserMemoryDocument(userDoc)
     }
 
@@ -204,8 +188,6 @@ class MemoryService {
                 }
             }
     }
-
-    // MARK: - Migration Methods
     
     func migrateOldDataToNewStructure(userId: String) async throws {
         print("🔄 Starting migration for user: \(userId)")
@@ -220,21 +202,15 @@ class MemoryService {
         
         print("📦 Found \(oldMemories.count) memories to migrate")
         
-        // Create new user document with old memories
         var userDoc = UserMemoryDocument(uid: userId)
         userDoc.memories = oldMemories.map { memory in
             var newMemory = memory
-            newMemory.id = newMemory.id ?? UUID().uuidString // Ensure ID exists
+            newMemory.id = newMemory.id ?? UUID().uuidString
             return newMemory
         }
-        
-        // Save new structure
+    
         try await saveUserMemoryDocument(userDoc)
-        
-        // Delete old memory documents
         try await deleteOldMemoryDocuments(oldMemories)
-        
-        print("✅ Migration completed for user: \(userId)")
     }
     
     private func fetchOldMemories(forUserId userId: String) async throws -> [MemoryEntity] {
@@ -245,8 +221,6 @@ class MemoryService {
         let memories = snapshot.documents.compactMap { doc in
             MemoryEntity.fromDictionary(doc.data(), id: doc.documentID)
         }
-        
-        // Sort in memory instead of using Firestore order to avoid index requirement
         return memories.sorted { $0.createdAt > $1.createdAt }
     }
     

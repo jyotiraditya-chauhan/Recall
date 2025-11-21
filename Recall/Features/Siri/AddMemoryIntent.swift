@@ -16,18 +16,14 @@ struct AddMemoryIntent: AppIntent {
         requestValueDialog: "What would you like to remember?"
     )
     var memoryText: String
-
     static var parameterSummary: some ParameterSummary {
         Summary("Remember \(\.$memoryText)")
     }
-
     func perform() async throws -> some IntentResult & ProvidesDialog {
-
         guard let userId = Auth.auth().currentUser?.uid else {
-            return .result(dialog: "Please open Recall and sign in first to save memories.")
-        }
+            return .result(dialog: "Please open Recall and sign in first to save memories.")}
 
-    
+
         let trimmedText = memoryText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else {
             return .result(dialog: "Please tell me what you'd like to remember.")
@@ -38,13 +34,11 @@ struct AddMemoryIntent: AppIntent {
             priority: .medium,
             source: .siri
         )
-
         do {
             _ = try await MemoryService.shared.createMemory(memory)
             return .result(dialog: "Saved: \(trimmedText)")
         } catch {
-            return .result(dialog: "Sorry, I couldn't save that right now. Please try again.")
-        }
+            return .result(dialog: "Sorry, I couldn't save that right now. Please try again.")}
     }
 }
 
@@ -55,14 +49,12 @@ enum MemoryPriorityIntent: String, AppEnum {
     case urgent = "Urgent"
 
     static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Priority")
-
     static var caseDisplayRepresentations: [MemoryPriorityIntent: DisplayRepresentation] = [
         .low: "Low",
         .medium: "Medium",
         .high: "High",
         .urgent: "Urgent"
     ]
-
     func toPriority() -> MemoryPriority {
         switch self {
         case .low: return .low

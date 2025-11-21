@@ -58,7 +58,7 @@ struct HomeView: View {
                         .background(AppColor.primary)
                         .clipShape(Circle())
                     } else {
-                        Image(systemName: "person.circle.fill")
+                        Image(systemName: "person.crop.circle")
                             .font(.system(size: 45))
                             .foregroundColor(AppColor.primary)
                     }
