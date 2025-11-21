@@ -14,7 +14,6 @@ protocol AuthenticationViewModelProtocol {
     func login(email: String, password: String) async
     func signup(email: String, password: String) async
     func signInWithGoogle() async
-    func signInWithApple() async
     func logout() async
 }
 
@@ -124,25 +123,6 @@ class AuthenticationViewModel: AuthenticationViewModelProtocol, ObservableObject
             if error != .userCancelled {
                 errorMessage = error.errorDescription
                 print("Google auth canceled: $\(error.errorDescription)")
-            }
-        } catch {
-            handleUnknownError(error, isCancellable: true)
-        }
-        
-        isLoading = false
-    }
-    
-    func signInWithApple() async {
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            let user = try await authService.signInWithApple()
-            currentUser = user
-            isAuthenticated = true
-        } catch let error as AuthError {
-            if error != .userCancelled {
-                errorMessage = error.errorDescription
             }
         } catch {
             handleUnknownError(error, isCancellable: true)
