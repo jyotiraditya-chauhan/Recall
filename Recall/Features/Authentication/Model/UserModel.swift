@@ -2,8 +2,6 @@ import Foundation
 import FirebaseFirestore
 
 struct UserEntity: Codable, Identifiable {
-
-    
     var id: String?
     var email: String
     var fullName: String

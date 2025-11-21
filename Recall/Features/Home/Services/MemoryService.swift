@@ -29,7 +29,6 @@ class MemoryService {
     private let db = Firestore.firestore()
     private let memoriesCollection = "memories"
 
-    // MARK: - New Structure Methods
     
     private func getUserMemoryDocument(userId: String) async throws -> UserMemoryDocument {
         let doc = try await db.collection(memoriesCollection).document(userId).getDocument()
@@ -57,20 +56,17 @@ class MemoryService {
 
         var userDoc = try await getUserMemoryDocument(userId: userId)
         
-        // Create new memory with generated ID
+
         var newMemory = memory
         newMemory.id = UUID().uuidString
         newMemory.userId = userId
         newMemory.createdAt = Date()
         newMemory.updatedAt = Date()
         
-        // Add to memories array
+    
         userDoc.memories.append(newMemory)
         
-        // Save updated document
-        try await saveUserMemoryDocument(userDoc)
-        
-        // Update user memory count
+    try await saveUserMemoryDocument(userDoc)
         try await updateUserMemoryCount(userId: userId, increment: 1)
 
         return newMemory
