@@ -19,11 +19,22 @@ struct MemoryText: AppEntity {
     static var defaultQuery = MemoryTextQuery()
 }
 
-struct MemoryTextQuery: EntityQuery {
+struct MemoryTextQuery: EntityQuery, EntityStringQuery {
     func entities(for identifiers: [MemoryText.ID]) async throws -> [MemoryText] {
         return identifiers.map { MemoryText(text: $0) }
     }
-    
+
+    /// This method is called by Siri when the user provides voice input
+    /// It converts the spoken text into a MemoryText entity
+    func entities(matching string: String) async throws -> [MemoryText] {
+        // Return the spoken text as a MemoryText entity
+        // This is the key method that enables Siri voice input to work
+        guard !string.isEmpty else {
+            return []
+        }
+        return [MemoryText(text: string)]
+    }
+
     func suggestedEntities() async throws -> [MemoryText] {
         return [
             MemoryText(text: "Buy groceries"),

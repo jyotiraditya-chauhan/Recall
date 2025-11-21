@@ -25,5 +25,14 @@ struct RecallAppShortcuts: AppShortcutsProvider {
             systemImageName: "exclamationmark.triangle.fill"
         )
 
+        AppShortcut(
+            intent: AddPersonMemoryIntent(),
+            phrases: [
+                "Remember \(\.$memoryText) about \(\.$personName) in \(.applicationName)",
+                "Save \(\.$memoryText) about \(\.$personName) in \(.applicationName)"
+            ],
+            shortTitle: "Remember About Person",
+            systemImageName: "person.fill"
+        )
     }
 }

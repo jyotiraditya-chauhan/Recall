@@ -19,11 +19,19 @@ struct PersonName: AppEntity {
     static var defaultQuery = PersonNameQuery()
 }
 
-struct PersonNameQuery: EntityQuery {
+struct PersonNameQuery: EntityQuery, EntityStringQuery {
     func entities(for identifiers: [PersonName.ID]) async throws -> [PersonName] {
         return identifiers.map { PersonName(name: $0) }
     }
-    
+
+    /// This method is called by Siri when the user provides voice input for person name
+    func entities(matching string: String) async throws -> [PersonName] {
+        guard !string.isEmpty else {
+            return []
+        }
+        return [PersonName(name: string)]
+    }
+
     func suggestedEntities() async throws -> [PersonName] {
         return [
             PersonName(name: "John"),
